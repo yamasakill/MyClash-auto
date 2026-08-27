@@ -57,6 +57,22 @@ const ruleOptionsEnable = {
 
 // 定义前置规则
 const prefixRules = [
+  // >>> CUSTOM PREFIX RULES >>>
+  "DOMAIN-SUFFIX,sankuria.sbs,日本",
+  "DOMAIN-SUFFIX,amagi.tv,日本",
+  "DOMAIN-SUFFIX,fastv.jp,日本",
+  "DOMAIN-SUFFIX,charandom.blog,日本",
+  "DOMAIN-SUFFIX,netgenx.site,日本",
+  "DOMAIN-SUFFIX,its-newid.net,日本",
+  "DOMAIN-SUFFIX,nhkworld.jp,日本",
+  "DOMAIN-SUFFIX,shopch.jp,日本",
+  "DOMAIN,tsh-mega.i9.ee,日本",
+  "IP-CIDR,58.82.168.138/32,日本,no-resolve",
+  "DOMAIN,jp-epg-26f0ce.gitlab.io,日本",
+  "DOMAIN-SUFFIX,d1flvb4iqlercm.cloudfront.net,日本",
+  "DOMAIN-SUFFIX,rch01e-alive-hls.akamaized.net,日本",
+  "DOMAIN-SUFFIX,av.mk.io,日本",
+  // <<< CUSTOM PREFIX RULES <<<
   // 私有网络直连
   'RULE-SET,private,直连',
 
