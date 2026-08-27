@@ -5,9 +5,7 @@ const fs = require('node:fs');
 const [, , upstreamPath, outputPath, rulesPath] = process.argv;
 
 if (!upstreamPath || !outputPath || !rulesPath) {
-  console.error(
-    'Usage: node tools/inject-prefix-rules.js upstream output rules',
-  );
+  console.error('Usage: node tools/inject-prefix-rules.js upstream output rules');
   process.exit(1);
 }
 
@@ -40,17 +38,9 @@ if (lineEndIndex === -1) {
 const markerStart = '  // >>> CUSTOM PREFIX RULES >>>';
 const markerEnd = '  // <<< CUSTOM PREFIX RULES <<<';
 
-const block = [
-  markerStart,
-  ...rules.map((rule) => `  ${JSON.stringify(rule)},`),
-  markerEnd,
-  '',
-].join(lineBreak);
+const block = [markerStart, ...rules.map((rule) => `  ${JSON.stringify(rule)},`), markerEnd, ''].join(lineBreak);
 
-const output =
-  upstream.slice(0, lineEndIndex + 1) +
-  block +
-  upstream.slice(lineEndIndex + 1);
+const output = upstream.slice(0, lineEndIndex + 1) + block + upstream.slice(lineEndIndex + 1);
 
 fs.writeFileSync(outputPath, output, 'utf8');
 
