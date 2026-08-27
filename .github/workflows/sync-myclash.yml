@@ -1,0 +1,51 @@
+name: Sync MyClash and reapply custom rules
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+  push:
+    paths:
+      - 'custom-prefix-rules.txt'
+      - 'tools/inject-prefix-rules.js'
+      - '.github/workflows/sync-myclash.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout my fork
+        uses: actions/checkout@v4
+
+      - name: Download upstream MyClash script
+        run: |
+          curl --fail --location --silent --show-error \
+            https://raw.githubusercontent.com/AIsouler/MyClash/main/Script/mihomoScript.js \
+            --output /tmp/mihomoScript.js
+
+      - name: Insert custom prefix rules
+        run: |
+          node tools/inject-prefix-rules.js \
+            /tmp/mihomoScript.js \
+            Script/mihomoScript.js \
+            custom-prefix-rules.txt
+
+      - name: Validate JavaScript syntax
+        run: node --check Script/mihomoScript.js
+
+      - name: Commit generated script
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Script/mihomoScript.js
+
+          if git diff --cached --quiet; then
+            echo "No changes."
+          else
+            git commit -m "chore: sync MyClash and reapply custom rules"
+            git push
+          fi
