@@ -47,6 +47,7 @@ const ruleOptionsEnable = {
   隐藏地区手动选择组: false, // 是否隐藏地区手动选择策略组
   生成倍率组: true, // 是否生成低倍率/高倍率策略组
   分流组添加所有节点: false, // 是否为分流策略组添加所有节点
+  过滤低倍率节点: false, // 是否过滤低倍率节点
   过滤高倍率节点: false, // 是否过滤高倍率节点
   过滤非地区节点: true, // 是否过滤非地区节点
   屏蔽国外QUIC: true, // 是否屏蔽国外QUIC流量
@@ -192,13 +193,13 @@ const rateRegionDefinitions = [
   {
     name: lowRateRegionName,
     regex:
-      /^(?!.*(?:剩|期)).*(?:(?<!\d)0\.[0-5]|(?<=[ |\-])0[*×x倍])|(?:(?<=[ |\-])[*×x]0(?= |倍|$))|^(?!.*(?:客户端|软件)).*下载|低倍|免费|(?<![A-Za-z])free(?![A-Za-z])/i,
+      /^(?!.*(?:剩|期)).*(?:(?<!\d)0\.[0-5]|(?<=[ |｜丨∣┃\-‐–—−－﹣])0[*×✕✖⨯⨉x倍])|(?:(?<=[ |｜丨∣┃\-‐–—−－﹣])[*×✕✖⨯⨉x]0(?= |倍|$))|^(?!.*(?:客户端|软件)).*下载|低倍|免费|(?<![A-Za-z])free(?![A-Za-z])/i,
     icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Available_1.png',
   },
   {
     name: highRateRegionName,
     regex:
-      /(?<=[ |\-])((?:[*×x]\s*(?:[2-9]\d*|[1-9]\d+)(?:\.\d+)?)|(?:(?<![\d.])(?:[2-9]\d*|[1-9]\d+)(?:\.\d+)?\s*(?:倍|[*×x])))/i,
+      /(?<=[ |｜丨∣┃\-‐–—−－﹣])((?:[*×✕✖⨯⨉x]\s*(?:[2-9]\d*|[1-9]\d+)(?:\.\d+)?)|(?:(?<![\d.])(?:[2-9]\d*|[1-9]\d+)(?:\.\d+)?\s*(?:倍|[*×✕✖⨯⨉x])))/i,
     icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Airport.png',
   },
 ];
@@ -773,9 +774,13 @@ function getIpVersionPreference() {
 function filterAndNormalizeProxies(config) {
   regionMatchCache.clear();
 
+  const filterLowRateProxiesEnabled = ruleOptionsEnable.过滤低倍率节点;
   const filterHighRateProxiesEnabled = ruleOptionsEnable.过滤高倍率节点;
   const filterNonRegionProxiesEnabled = ruleOptionsEnable.过滤非地区节点;
 
+  const lowRateRegex = filterLowRateProxiesEnabled
+    ? rateRegionDefinitions.find((r) => r.name === lowRateRegionName)?.regex
+    : null;
   const highRateRegex = filterHighRateProxiesEnabled
     ? rateRegionDefinitions.find((r) => r.name === highRateRegionName)?.regex
     : null;
@@ -786,7 +791,7 @@ function filterAndNormalizeProxies(config) {
     const type = String(proxy.type ?? '').toLowerCase();
     if (type === 'direct' || type === 'reject' || type === 'rematch') return false;
 
-    if (highRateRegex?.test(proxy.name)) return false;
+    if (lowRateRegex?.test(proxy.name) || highRateRegex?.test(proxy.name)) return false;
 
     if (!filterNonRegionProxiesEnabled) return true;
 
@@ -1376,7 +1381,7 @@ function buildDnsAndHostsConfig(config, filteredProxies) {
     ...(Object.keys(proxyServerPolicy).length > 0 && {
       'proxy-server-nameserver-policy': proxyServerPolicy,
     }),
-    'default-nameserver': chinaDNS,
+    'default-nameserver': chinaDohDNS,
     nameserver: foreignDNS,
     'nameserver-policy': {
       'rule-set:cn': chinaDNS,
