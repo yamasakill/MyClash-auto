@@ -115,7 +115,7 @@ const dialerProxyName = '链式中转';
 
 // 定义全局排除节点的正则表达式，用于排除非地区节点
 const excludeFilter =
-  /群|返利|循环|官网|客服|网站|网址|获取|订阅|流量|到期|机场|下次|版本|官址|备用|过期|已用|联系|邮箱|工单|贩卖|通知|倒卖|防止|国内|地址|频道|电报|无法|说明|使用|提示|访问|支持|教程|关注|更新|作者|加入|超时|收藏|优惠|福利|邀请|好友|失联|选择|剩余|公益|发布|DIZTNA|通路|登录|禁止|定时|渠道|牢记|永久|余额|阁下|本站|刷新|导航|建议|重置|以下|⚠️|@|t\.me\/\+|\bexpire\b|\bhttps?:\/\/|\.com|\btraffic\b/iu;
+  /群|返利|循环|官网|客服|网站|网址|获取|订阅|流量|到期|机场|下次|版本|官址|备用|过期|已用|联系|邮箱|工单|贩卖|通知|倒卖|防止|国内|地址|频道|电报|无法|说明|使用|提示|访问|支持|教程|关注|更新|作者|加入|超时|收藏|优惠|福利|邀请|好友|失联|选择|剩余|公益|发布|DIZTNA|通路|登录|禁止|定时|渠道|牢记|永久|余额|阁下|本站|刷新|导航|建议|重置|以下|过滤|⚠️|@|t\.me\/\+|\bexpire\b|\bhttps?:\/\/|\.com|\btraffic\b/iu;
 
 // 屏蔽国外QUIC
 const blockForeignQuic = [
@@ -504,15 +504,15 @@ const serviceConfigs = [
         path: './ruleset/steam.mrs',
         'path-in-bundle': 'geo/geosite/steam.mrs',
       },
-      steam_asn: {
+      steam_ip: {
         ...ruleProviderCommonIpcidr,
-        url: 'https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/asn/AS32590.mrs',
-        path: './ruleset/steam_asn.mrs',
-        'path-in-bundle': 'asn/AS32590.mrs',
+        url: 'https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geoip/steam.mrs',
+        path: './ruleset/steam_ip.mrs',
+        'path-in-bundle': 'geo/geoip/steam.mrs',
       },
     },
     icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Steam.png',
-    rules: ['RULE-SET,steam,Steam', 'RULE-SET,steam_asn,Steam,no-resolve'],
+    rules: ['RULE-SET,steam,Steam', 'RULE-SET,steam_ip,Steam,no-resolve'],
   },
   {
     name: 'TikTok',
