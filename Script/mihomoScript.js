@@ -1319,7 +1319,7 @@ function simplifyDomainPolicy(policy) {
   const groups = new Map();
 
   for (const [domain, dns] of Object.entries(policy)) {
-    const dnsKey = JSON.stringify(dns);
+    const dnsKey = JSON.stringify(Array.isArray(dns) ? [...dns].sort() : dns);
 
     if (domain.startsWith('+.') || domain.startsWith('.') || domain.includes('*')) {
       groups.set(`keep:${domain}`, [{ domain, dns, dnsKey }]);
