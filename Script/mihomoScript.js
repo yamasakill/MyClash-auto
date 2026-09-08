@@ -1425,7 +1425,12 @@ function buildDnsAndHostsConfig(config, filteredProxies) {
     }
   }
 
-  const proxyServerPolicy = simplifyDomainPolicy(matchedProxyPolicy);
+  const matchedPolicyDomains = Object.keys(matchedProxyPolicy);
+  const proxyServerPolicy =
+    proxyDomains.size === matchedPolicyDomains.length &&
+    matchedPolicyDomains.every((domain) => proxyDomains.has(domain.toLowerCase()))
+      ? simplifyDomainPolicy(matchedProxyPolicy)
+      : matchedProxyPolicy;
 
   const originalFakeIpFilter = originalDnsConfig['fake-ip-filter'] || [];
   const proxyFakeIpFilter = originalFakeIpFilter.filter((pattern) => {
@@ -1442,7 +1447,13 @@ function buildDnsAndHostsConfig(config, filteredProxies) {
     'enhanced-mode': 'fake-ip',
     'fake-ip-range': '198.18.0.1/15',
     'fake-ip-range6': '2001:2::1/48',
-    'fake-ip-filter': ['rule-set:private', 'rule-set:fakeip_filter', 'rule-set:geolocation-cn', ...proxyFakeIpFilter],
+    'fake-ip-filter': [
+      'rule-set:private',
+      'rule-set:fakeip_filter',
+      'rule-set:geolocation-cn',
+      ...(ruleOptionsEnable['FCM'] ? ['rule-set:googlefcm'] : []),
+      ...proxyFakeIpFilter,
+    ],
     'proxy-server-nameserver': chinaDohDNS,
     ...(Object.keys(proxyServerPolicy).length > 0 && {
       'proxy-server-nameserver-policy': proxyServerPolicy,
