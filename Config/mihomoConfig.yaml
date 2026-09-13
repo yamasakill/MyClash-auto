@@ -70,9 +70,14 @@ profile:
   store-fake-ip: true
 
 # 国内外 DNS 定义
-chinaDNS: &chinaDNS ['223.5.5.5#DIRECT', '119.29.29.29#DIRECT']
-chinaDohDNS: &chinaDohDNS ['https://223.5.5.5/dns-query#DIRECT', 'https://1.12.12.12/dns-query#DIRECT']
+chinaDNS: &chinaDNS ['system', '223.5.5.5#DIRECT', '119.29.29.29#DIRECT']
 foreignDNS: &foreignDNS ['https://cloudflare-dns.com/dns-query#默认代理', 'https://dns.google/dns-query#默认代理']
+chinaDohDNS:
+  &chinaDohDNS [
+    'https://223.5.5.5/dns-query#DIRECT',
+    'https://1.12.12.12/dns-query#DIRECT',
+    'https://114.114.114.114/dns-query#DIRECT',
+  ]
 
 dns:
   enable: true
@@ -89,7 +94,7 @@ dns:
   nameserver: *foreignDNS
   nameserver-policy:
     'rule-set:cn': *chinaDNS
-  direct-nameserver: ['system', '223.5.5.5#DIRECT', '119.29.29.29#DIRECT']
+  direct-nameserver: *chinaDNS
 
 hosts:
   'cloudflare-dns.com': ['1.1.1.1', '1.0.0.1']
@@ -214,11 +219,21 @@ rule-providers:
     url: 'https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/microsoft.mrs'
     path: './ruleset/microsoft.mrs'
     path-in-bundle: 'geo/geosite/microsoft.mrs'
+  microsoft_ip:
+    <<: *rule_providers_ip
+    url: 'https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geoip/microsoft.mrs'
+    path: './ruleset/microsoft_ip.mrs'
+    path-in-bundle: 'geo/geoip/microsoft.mrs'
   apple:
     <<: *rule_providers_domain
     url: 'https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/apple.mrs'
     path: './ruleset/apple.mrs'
     path-in-bundle: 'geo/geosite/apple.mrs'
+  apple_ip:
+    <<: *rule_providers_ip
+    url: 'https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geoip/apple.mrs'
+    path: './ruleset/apple_ip.mrs'
+    path-in-bundle: 'geo/geoip/apple.mrs'
   telegram:
     <<: *rule_providers_domain
     url: 'https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/telegram.mrs'
@@ -666,7 +681,9 @@ rules:
   - RULE-SET,ai,AI
   - RULE-SET,github,默认代理
   - RULE-SET,microsoft,Microsoft
+  - RULE-SET,microsoft_ip,Microsoft,no-resolve
   - RULE-SET,apple,Apple
+  - RULE-SET,apple_ip,Apple,no-resolve
   - RULE-SET,telegram,Telegram
   - RULE-SET,telegram_ip,Telegram,no-resolve
   - RULE-SET,steam,Steam
