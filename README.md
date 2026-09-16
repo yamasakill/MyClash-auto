@@ -129,6 +129,8 @@ https://raw.githubusercontent.com/AIsouler/MyClash/main/Config/mihomoConfigLite.
 - `Instagram`
 - `Netflix`
 - `Twitter`
+- `Meta` （Facebook/Instagram/WhatsApp/Messenger/Threads）
+- `Line`
 - `Emby`
 - `PikPak`
 - `Spotify`

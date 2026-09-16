@@ -82,7 +82,7 @@ function runIntegrationTests(h, api, meta, fx, loadScript, scriptFile) {
 
   // ---------------- DNS 与 hosts ----------------
   h.section('集成测试 · DNS 与 hosts');
-  h.test('proxy-server-nameserver 固定使用公共 DoH；无专属策略时私有 DNS 合并写入节点域名 policy', () => {
+  h.test('默认与代理服务器 DNS 使用各自的固定公共 DNS；无专属策略时私有 DNS 合并写入节点域名 policy', () => {
     const cfg = fx.typicalSubscription();
     // 移除 listen 触发条件与节点专属 DNS 策略，验证私有 DNS 经 policy 生效
     delete cfg.dns.listen;
@@ -92,8 +92,9 @@ function runIntegrationTests(h, api, meta, fx, loadScript, scriptFile) {
     const out = api.main(cfg);
     h.assertEqual(out.dns.enable, true);
     h.assertEqual(out.dns['enhanced-mode'], 'fake-ip');
-    // proxy-server-nameserver 固定使用公共 DoH，不再承载私有 DNS
-    h.assertDeep(out.dns['proxy-server-nameserver'], api.chinaDohDNS);
+    // 默认 DNS 与代理服务器 DNS 分别使用固定列表，不再承载私有 DNS
+    h.assertDeep(out.dns['default-nameserver'], api.defaultDNS);
+    h.assertDeep(out.dns['proxy-server-nameserver'], api.proxyServerDNS);
     // 相同 DNS 的节点域名按后缀压缩为一条规则；两个来源的私有 DNS 合并去重、剥离 # 后缀
     const policy = out.dns['proxy-server-nameserver-policy'];
     h.assertDeep(policy['+.example.com'], [
@@ -257,7 +258,8 @@ function runIntegrationTests(h, api, meta, fx, loadScript, scriptFile) {
     const privateDNS = out3.dns['proxy-server-nameserver-policy']['+.example.com'];
     h.assert(!privateDNS.some((d) => d.includes('udp://127.0.0.1')), 'listen 对应的本地 DNS 不应被误留为私有 DNS');
     h.assert(privateDNS.includes('https://private.example-dns.com/dns-query'), 'nameserver 中的私有 DNS 仍应保留');
-    h.assertDeep(out3.dns['proxy-server-nameserver'], api.chinaDohDNS);
+    h.assertDeep(out3.dns['default-nameserver'], api.defaultDNS);
+    h.assertDeep(out3.dns['proxy-server-nameserver'], api.proxyServerDNS);
   });
   h.test('无 dns/hosts 输入时生成默认配置', () => {
     const cfg = fx.typicalSubscription();
@@ -265,9 +267,11 @@ function runIntegrationTests(h, api, meta, fx, loadScript, scriptFile) {
     delete cfg.hosts;
     const out = api.main(cfg);
     h.assertEqual(out.dns.enable, true);
-    // 默认 proxy-server-nameserver 使用公共 DoH；无私有 DNS 时不生成 policy
-    h.assertDeep(out.dns['proxy-server-nameserver'], api.chinaDohDNS);
+    // 默认与代理服务器 DNS 使用各自的固定公共 DNS；无私有 DNS 时不生成 policy
+    h.assertDeep(out.dns['default-nameserver'], api.defaultDNS);
+    h.assertDeep(out.dns['proxy-server-nameserver'], api.proxyServerDNS);
     h.assert(!('proxy-server-nameserver-policy' in out.dns), '无私有 DNS 时不应生成 policy');
+    h.assertDeep(out.hosts['doh.pub'], ['1.12.12.12', '120.53.53.53']);
     // 默认 hosts 仍生成（不再包含已移除的 dns.alidns.com/dns.google 等条目）
     h.assertDeep(out.hosts['services.googleapis.cn'], 'services.googleapis.com');
   });
