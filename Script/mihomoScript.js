@@ -60,20 +60,20 @@ const ruleOptionsEnable = {
 // 定义前置规则
 const prefixRules = [
   // >>> CUSTOM PREFIX RULES >>>
-  'DOMAIN-SUFFIX,sankuria.sbs,日本',
-  'DOMAIN-SUFFIX,amagi.tv,日本',
-  'DOMAIN-SUFFIX,fastv.jp,日本',
-  'DOMAIN-SUFFIX,charandom.blog,日本',
-  'DOMAIN-SUFFIX,netgenx.site,日本',
-  'DOMAIN-SUFFIX,its-newid.net,日本',
-  'DOMAIN-SUFFIX,nhkworld.jp,日本',
-  'DOMAIN-SUFFIX,shopch.jp,日本',
-  'DOMAIN,tsh-mega.i9.ee,日本',
-  'IP-CIDR,58.82.168.138/32,日本,no-resolve',
-  'DOMAIN,jp-epg-26f0ce.gitlab.io,日本',
-  'DOMAIN-SUFFIX,d1flvb4iqlercm.cloudfront.net,日本',
-  'DOMAIN-SUFFIX,rch01e-alive-hls.akamaized.net,日本',
-  'DOMAIN-SUFFIX,av.mk.io,日本',
+  "DOMAIN-SUFFIX,sankuria.sbs,日本",
+  "DOMAIN-SUFFIX,amagi.tv,日本",
+  "DOMAIN-SUFFIX,fastv.jp,日本",
+  "DOMAIN-SUFFIX,charandom.blog,日本",
+  "DOMAIN-SUFFIX,netgenx.site,日本",
+  "DOMAIN-SUFFIX,its-newid.net,日本",
+  "DOMAIN-SUFFIX,nhkworld.jp,日本",
+  "DOMAIN-SUFFIX,shopch.jp,日本",
+  "DOMAIN,tsh-mega.i9.ee,日本",
+  "IP-CIDR,58.82.168.138/32,日本,no-resolve",
+  "DOMAIN,jp-epg-26f0ce.gitlab.io,日本",
+  "DOMAIN-SUFFIX,d1flvb4iqlercm.cloudfront.net,日本",
+  "DOMAIN-SUFFIX,rch01e-alive-hls.akamaized.net,日本",
+  "DOMAIN-SUFFIX,av.mk.io,日本",
   // <<< CUSTOM PREFIX RULES <<<
   // 私有网络直连
   'RULE-SET,private,直连',
@@ -711,6 +711,7 @@ const serviceConfigs = [
   {
     name: 'EHentai',
     baseOption: selectBaseOption,
+    direct: true,
     defaultSelected: '美国',
     providers: {
       ehentai: {
@@ -1219,7 +1220,7 @@ const commonDnsRegex = new RegExp(
 );
 
 // 国内外 DNS 定义
-const chinaDNS = ['system', '223.5.5.5#DIRECT', '119.29.29.29#DIRECT'];
+const chinaDNS = ['223.5.5.5#DIRECT', '119.29.29.29#DIRECT'];
 const foreignDNS = ['https://cloudflare-dns.com/dns-query#默认代理', 'https://dns.google/dns-query#默认代理'];
 const defaultDNS = ['114.114.114.114#DIRECT', 'tls://223.5.5.5#DIRECT', 'https://1.12.12.12#DIRECT'];
 const proxyServerDNS = ['114.114.114.114#DIRECT', 'tls://223.5.5.5#DIRECT', 'https://doh.pub/dns-query#DIRECT'];
