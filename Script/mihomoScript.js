@@ -44,6 +44,7 @@ const ruleOptionsEnable = {
   AdBlock: true, // 广告拦截
 
   // 以下为非分流策略配置
+  极简模式: false, // 是否启用极简模式
   生成地区自动选择组: true, // 是否生成地区自动选择策略组
   隐藏地区手动选择组: false, // 是否隐藏地区手动选择策略组
   生成倍率组: true, // 是否生成低倍率/高倍率策略组
@@ -1014,6 +1015,7 @@ function buildCustomizeGroups(filteredProxies, customizeList = customizeProxies)
  * 构建基础/分流策略组/部分节点组、GLOBAL 组与规则集，并汇总分流规则
  */
 function buildFunctionalGroups(filteredProxies, generatedRegionGroups, customizeInfo) {
+  const minimalModeEnabled = ruleOptionsEnable.极简模式;
   const blockForeignQuicEnabled = ruleOptionsEnable.屏蔽国外QUIC;
   const addAllNodesToServiceGroupsEnabled = ruleOptionsEnable.分流组添加所有节点;
   const chainEnabled = ruleOptionsEnable.链式代理;
@@ -1033,6 +1035,48 @@ function buildFunctionalGroups(filteredProxies, generatedRegionGroups, customize
   const groupNamesOfSelect = generatedRegionGroups.filter((g) => g.type === 'select').map((g) => g.name);
   const baseGroupNames = baseGroups.filter((g) => ruleOptionsEnable[g.name]).map((g) => g.name);
   const customGroupNames = customGroup ? [customGroup.name] : [];
+
+  const chainGroup =
+    chainEnabled && customGroup
+      ? {
+          ...selectBaseOption,
+          name: dialerProxyName,
+          proxies: filteredProxyNames,
+          icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Bypass.png',
+        }
+      : null;
+
+  if (minimalModeEnabled) {
+    const defaultGroup = {
+      ...selectBaseOption,
+      name: '默认代理',
+      proxies: allProxiesNames,
+      icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Proxy.png',
+    };
+    const finalRuleProviders = { ...baseRuleProviders };
+    if (!blockForeignQuicEnabled) delete finalRuleProviders.cn_additional;
+    const directGroup = {
+      ...selectBaseOption,
+      name: '直连',
+      proxies: [...directProxies.map((p) => p.name)],
+      icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/China.png',
+      hidden: true,
+    };
+    const globalGroup = {
+      ...selectBaseOption,
+      name: 'GLOBAL',
+      proxies: ['默认代理', ...customGroupNames, ...(chainGroup ? [chainGroup.name] : []), '直连'],
+      icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Global.png',
+    };
+    return {
+      globalGroup,
+      functionalGroups: [defaultGroup],
+      functionalRules: [],
+      finalRuleProviders,
+      chainGroup,
+      directGroup,
+    };
+  }
 
   functionalGroups.push({
     ...selectBaseOption,
@@ -1091,20 +1135,6 @@ function buildFunctionalGroups(filteredProxies, generatedRegionGroups, customize
     icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Stack.png',
   });
 
-  if (customGroup) {
-    functionalGroups.push(customGroup);
-  }
-
-  const chainGroup =
-    chainEnabled && customGroup
-      ? {
-          ...selectBaseOption,
-          name: dialerProxyName,
-          proxies: filteredProxyNames,
-          icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Bypass.png',
-        }
-      : null;
-
   const directGroup = {
     ...selectBaseOption,
     name: '直连',
@@ -1118,6 +1148,7 @@ function buildFunctionalGroups(filteredProxies, generatedRegionGroups, customize
     name: 'GLOBAL',
     proxies: [
       ...functionalGroups.map((g) => g.name),
+      ...customGroupNames,
       ...(chainGroup ? [chainGroup.name] : []),
       directGroup.name,
       ...generatedRegionGroups.map((g) => g.name),
@@ -1404,6 +1435,8 @@ function simplifyDomainPolicy(policy) {
  * 2. proxy-server-nameserver 有且仅有一个 DNS 并且该 DNS 包含 127.0.0.1 并且 listen 包含 0.0.0.0
  */
 function buildDnsAndHostsConfig(config, filteredProxies) {
+  const minimalModeEnabled = ruleOptionsEnable.极简模式;
+
   const originalDnsConfig = config.dns || {};
 
   const proxyServerNameservers = originalDnsConfig['proxy-server-nameserver'] || [];
@@ -1488,7 +1521,7 @@ function buildDnsAndHostsConfig(config, filteredProxies) {
       'rule-set:private',
       'rule-set:fakeip_filter',
       'rule-set:geolocation-cn',
-      ...(ruleOptionsEnable['FCM'] ? ['rule-set:googlefcm'] : []),
+      ...(minimalModeEnabled ? [] : ruleOptionsEnable['FCM'] ? ['rule-set:googlefcm'] : []),
       ...proxyFakeIpFilter,
     ],
     'default-nameserver': defaultDNS,
@@ -1537,7 +1570,7 @@ function main(config) {
 
   const { customProxies, customProxyNames, customGroup } = buildCustomizeGroups(filteredProxies);
 
-  const generatedRegionGroups = buildRegionGroups(filteredProxies, customProxies);
+  const generatedRegionGroups = ruleOptionsEnable.极简模式 ? [] : buildRegionGroups(filteredProxies, customProxies);
 
   const { globalGroup, functionalGroups, functionalRules, finalRuleProviders, chainGroup, directGroup } =
     buildFunctionalGroups(filteredProxies, generatedRegionGroups, { customProxyNames, customGroup });
@@ -1588,6 +1621,7 @@ function main(config) {
   newConfig['proxy-groups'] = [
     globalGroup,
     ...functionalGroups,
+    ...(customGroup ? [customGroup] : []),
     ...(chainGroup ? [chainGroup] : []),
     directGroup,
     ...generatedRegionGroups,
@@ -1603,7 +1637,7 @@ function main(config) {
     'RULE-SET,geolocation-!cn,默认代理',
     'RULE-SET,cn_ip,直连',
     'RULE-SET,private_ip,直连',
-    'MATCH,漏网之鱼',
+    `MATCH,${ruleOptionsEnable.极简模式 ? '默认代理' : '漏网之鱼'}`,
   ];
 
   return newConfig;
