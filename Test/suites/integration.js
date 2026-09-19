@@ -278,6 +278,19 @@ function runIntegrationTests(h, api, meta, fx, loadScript, scriptFile) {
 
   // ---------------- 配置选项切换 ----------------
   h.section('集成测试 · 配置选项切换');
+  h.test('极简模式仅保留基础策略组且 MATCH 走默认代理', () =>
+    withOptions(api, { 极简模式: true }, () => {
+      const out = api.main(fx.typicalSubscription());
+      const groups = out['proxy-groups'];
+      h.assertDeep(
+        groups.map((g) => g.name),
+        ['GLOBAL', '默认代理', '直连'],
+        '极简模式策略组应仅保留 GLOBAL、默认代理和直连',
+      );
+      h.assert(!out.dns['fake-ip-filter'].includes('rule-set:googlefcm'), '不应注入 FCM fake-IP 规则');
+      h.assert(!out.rules.some((rule) => /,(Google|AI|Telegram|Steam|AdBlock)$/.test(rule)), '不应生成分流规则');
+    }),
+  );
   h.test('过滤高倍率节点=true → 移除高倍率节点及组', () =>
     withOptions(api, { 过滤高倍率节点: true }, () => {
       const out = api.main(fx.minimalSubscription());
