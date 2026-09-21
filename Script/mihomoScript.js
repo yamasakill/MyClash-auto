@@ -547,7 +547,7 @@ const serviceConfigs = [
         'path-in-bundle': 'geo/geoip/tiktok.mrs',
       },
     },
-    icon: 'https://fastly.jsdelivr.net/gh/AIsouler/MyClash@main/Icons/svg/Tiktok.svg',
+    icon: 'https://fastly.jsdelivr.net/gh/AIsouler/MyClash@main/Icons/svg/TikTok.svg',
     rules: ['RULE-SET,tiktok,TikTok', 'RULE-SET,tiktok_ip,TikTok,no-resolve'],
   },
   {
