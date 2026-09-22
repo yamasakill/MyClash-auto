@@ -444,7 +444,7 @@ const serviceConfigs = [
         'path-in-bundle': 'geo/geosite/category-ai-!cn.mrs',
       },
     },
-    icon: `${iconBaseUrl}ChatGPT.svg`,
+    icon: `${iconBaseUrl}OpenAI.svg`,
     rules: ['RULE-SET,ai,AI'],
   },
   {
@@ -677,7 +677,7 @@ const serviceConfigs = [
         'path-in-bundle': 'geo/geosite/pikpak.mrs',
       },
     },
-    icon: `${iconBaseUrl}Pikpak.svg`,
+    icon: `${iconBaseUrl}PikPak.svg`,
     rules: ['RULE-SET,pikpak,PikPak'],
   },
   {
@@ -743,7 +743,7 @@ const serviceConfigs = [
         'path-in-bundle': 'geo/geosite/ehentai.mrs',
       },
     },
-    icon: `${iconBaseUrl}Ehentai.svg`,
+    icon: `${iconBaseUrl}EHentai.svg`,
     rules: ['RULE-SET,ehentai,EHentai'],
   },
   {
