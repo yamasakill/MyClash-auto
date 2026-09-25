@@ -319,6 +319,12 @@ const baseRuleProviders = {
     path: './ruleset/cn.mrs',
     'path-in-bundle': 'geo/geosite/cn.mrs',
   },
+  douyin: {
+    ...ruleProviderCommonDomain,
+    url: `${ruleSetBaseUrl}geosite/douyin.mrs`,
+    path: './ruleset/douyin.mrs',
+    'path-in-bundle': 'geo/geosite/douyin.mrs',
+  },
 };
 
 // 策略组公共配置
@@ -1546,9 +1552,12 @@ function buildDnsAndHostsConfig(config, filteredProxies) {
     }),
     nameserver: foreignDNS,
     'nameserver-policy': {
+      'rule-set:private': 'system',
+      'rule-set:douyin': ['system', '180.184.1.1', '180.184.2.2'],
       'rule-set:cn': chinaDNS,
     },
     'direct-nameserver': chinaDNS,
+    'direct-nameserver-follow-policy': true,
   };
 
   const hosts = {
