@@ -91,8 +91,11 @@ dns:
   proxy-server-nameserver: *proxyServerDNS
   nameserver: *foreignDNS
   nameserver-policy:
+    'rule-set:private': 'system'
+    'rule-set:douyin': ['system', '180.184.1.1', '180.184.2.2']
     'rule-set:cn': *chinaDNS
   direct-nameserver: *chinaDNS
+  direct-nameserver-follow-policy: true
 
 hosts:
   'doh.pub': ['1.12.12.12', '120.53.53.53']
@@ -241,6 +244,11 @@ rule-providers:
     url: 'https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/cn.mrs'
     path: './ruleset/cn.mrs'
     path-in-bundle: 'geo/geosite/cn.mrs'
+  douyin:
+    <<: *rule_providers_domain
+    url: 'https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/geosite/douyin.mrs'
+    path: './ruleset/douyin.mrs'
+    path-in-bundle: 'geo/geosite/douyin.mrs'
 
 # --- 策略组 (Proxy Groups) ---
 
@@ -269,7 +277,7 @@ group_common:
       tolerance: 50,
       include-all: true,
       exclude-type: 'DIRECT',
-      icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Auto.png',
+      icon: 'https://fastly.jsdelivr.net/gh/AIsouler/MyClash@main/Icons/svg/Auto.svg',
       hidden: true,
     }
 
@@ -344,54 +352,54 @@ proxy-groups:
     <<: *group_common_select
     proxies:
       ['香港', '日本', '美国', '新加坡', '台湾省', '低倍率节点', '高倍率节点', '手动选择', '自动选择', '其他节点']
-    icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Proxy.png'
+    icon: 'https://fastly.jsdelivr.net/gh/AIsouler/MyClash@main/Icons/svg/Proxy.svg'
 
   - name: '手动选择'
     <<: *group_common_select
     include-all: true
     exclude-type: 'DIRECT'
-    icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Static.png'
+    icon: 'https://fastly.jsdelivr.net/gh/AIsouler/MyClash@main/Icons/svg/Static.svg'
 
   - name: '自动选择'
     <<: *group_common_auto
 
   - name: 'Google'
     <<: [*group_common_select, *proxies_default]
-    icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Google_Search.png'
+    icon: 'https://fastly.jsdelivr.net/gh/AIsouler/MyClash@main/Icons/svg/Google.svg'
 
   - name: 'AI'
     <<: [*group_common_select, *proxies_default]
     default-selected: '美国'
-    icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/ChatGPT.png'
+    icon: 'https://fastly.jsdelivr.net/gh/AIsouler/MyClash@main/Icons/svg/OpenAI.svg'
 
   - name: 'Telegram'
     <<: [*group_common_select, *proxies_default]
-    icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Telegram.png'
+    icon: 'https://fastly.jsdelivr.net/gh/AIsouler/MyClash@main/Icons/svg/Telegram.svg'
 
   - name: 'Steam'
     <<: [*group_common_select, *proxies_direct]
-    icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Steam.png'
+    icon: 'https://fastly.jsdelivr.net/gh/AIsouler/MyClash@main/Icons/svg/Steam.svg'
 
   - name: 'AdBlock'
     <<: [*group_common_select, *proxies_reject]
-    icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Advertising.png'
+    icon: 'https://fastly.jsdelivr.net/gh/AIsouler/MyClash@main/Icons/svg/AdBlock.svg'
 
   - name: '漏网之鱼'
     <<: *group_common_select
     proxies: ['默认代理', '直连']
-    icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Stack.png'
+    icon: 'https://fastly.jsdelivr.net/gh/AIsouler/MyClash@main/Icons/svg/Stack.svg'
 
   - name: '直连'
     <<: *group_common_select
     proxies: ['🇨🇳 直连 | 双栈', '🇨🇳 直连 | IPv4优先', '🇨🇳 直连 | IPv6优先', '🇨🇳 直连 | 仅IPv4', '🇨🇳 直连 | 仅IPv6']
-    icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/China.png'
+    icon: 'https://fastly.jsdelivr.net/gh/AIsouler/MyClash@main/Icons/svg/China.svg'
 
   # 定义地区策略组
   - name: '香港'
     <<: [*group_common_select, *HK_filter]
     include-all: true
     proxies: ['香港-自动选择']
-    icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Hong_Kong.png'
+    icon: 'https://fastly.jsdelivr.net/gh/AIsouler/MyClash@main/Icons/svg/HongKong.svg'
   - name: '香港-自动选择'
     <<: [*group_common_auto, *HK_filter]
 
@@ -399,7 +407,7 @@ proxy-groups:
     <<: [*group_common_select, *JP_filter]
     include-all: true
     proxies: ['日本-自动选择']
-    icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Japan.png'
+    icon: 'https://fastly.jsdelivr.net/gh/AIsouler/MyClash@main/Icons/svg/Japan.svg'
   - name: '日本-自动选择'
     <<: [*group_common_auto, *JP_filter]
 
@@ -407,7 +415,7 @@ proxy-groups:
     <<: [*group_common_select, *US_filter]
     include-all: true
     proxies: ['美国-自动选择']
-    icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/United_States.png'
+    icon: 'https://fastly.jsdelivr.net/gh/AIsouler/MyClash@main/Icons/svg/America.svg'
   - name: '美国-自动选择'
     <<: [*group_common_auto, *US_filter]
 
@@ -415,7 +423,7 @@ proxy-groups:
     <<: [*group_common_select, *SG_filter]
     include-all: true
     proxies: ['新加坡-自动选择']
-    icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Singapore.png'
+    icon: 'https://fastly.jsdelivr.net/gh/AIsouler/MyClash@main/Icons/svg/Singapore.svg'
   - name: '新加坡-自动选择'
     <<: [*group_common_auto, *SG_filter]
 
@@ -423,7 +431,7 @@ proxy-groups:
     <<: [*group_common_select, *TW_filter]
     include-all: true
     proxies: ['台湾省-自动选择']
-    icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Taiwan.png'
+    icon: 'https://fastly.jsdelivr.net/gh/AIsouler/MyClash@main/Icons/svg/Taiwan.svg'
   - name: '台湾省-自动选择'
     <<: [*group_common_auto, *TW_filter]
 
@@ -431,7 +439,7 @@ proxy-groups:
     <<: [*group_common_select, *low_filter]
     include-all: true
     proxies: ['低倍率节点-自动选择']
-    icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Available_1.png'
+    icon: 'https://fastly.jsdelivr.net/gh/AIsouler/MyClash@main/Icons/svg/Available.svg'
   - name: '低倍率节点-自动选择'
     <<: [*group_common_auto, *low_filter]
 
@@ -439,7 +447,7 @@ proxy-groups:
     <<: [*group_common_select, *high_filter]
     include-all: true
     proxies: ['高倍率节点-自动选择']
-    icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/Airport.png'
+    icon: 'https://fastly.jsdelivr.net/gh/AIsouler/MyClash@main/Icons/svg/Airport.svg'
   - name: '高倍率节点-自动选择'
     <<: [*group_common_auto, *high_filter]
 
@@ -447,7 +455,7 @@ proxy-groups:
     <<: [*group_common_select, *exclude_filter]
     include-all: true
     proxies: ['其他节点-自动选择']
-    icon: 'https://fastly.jsdelivr.net/gh/Koolson/Qure@master/IconSet/Color/World_Map.png'
+    icon: 'https://fastly.jsdelivr.net/gh/AIsouler/MyClash@main/Icons/svg/WorldMap.svg'
   - name: '其他节点-自动选择'
     <<: [*group_common_auto, *exclude_filter]
 
