@@ -127,8 +127,8 @@ https://raw.githubusercontent.com/AIsouler/MyClash/main/Config/mihomoConfigLite.
 
 感谢以下项目以及所有上游项目：
 
-- [dahaha-365/YaNet](https://github.com/dahaha-365/YaNet/blob/main/Mihomo/global_script.js)
+- [dahaha-365/YaNet](https://github.com/dahaha-365/YaNet)
 - [YiXuanZX/rules](https://github.com/YiXuanZX/rules)
 - [appshubcc/bett-rules](https://github.com/appshubcc/bett-rules)
-- [217heidai/adblockfilters](https://github.com/217heidai/adblockfilters)
 - [Koolson/Qure](https://github.com/Koolson/Qure)
+- [jsdmirror/JSDMirror](https://github.com/jsdmirror/JSDMirror)

@@ -122,10 +122,10 @@ const directProxies = [
 ];
 
 // 图标 URL 公共前缀
-const iconBaseUrl = 'https://fastly.jsdelivr.net/gh/AIsouler/MyClash@main/Icons/svg/';
+const iconBaseUrl = 'https://cdn.jsdmirror.com/gh/AIsouler/MyClash@main/Icons/svg/';
 
 // 规则集 URL 公共前缀
-const ruleSetBaseUrl = 'https://fastly.jsdelivr.net/gh/appshubcc/bett-rules@meta/geo/';
+const ruleSetBaseUrl = 'https://cdn.jsdmirror.com/gh/appshubcc/bett-rules@meta/geo/';
 
 // 定义地区策略组
 const regionDefinitions = [
@@ -164,13 +164,13 @@ const rateRegionDefinitions = [
   {
     name: lowRateRegionName,
     regex:
-      /^(?!.*(?:剩|期)).*(?:(?<!\d)0\.[0-5]|(?<=[ \[\(|｜丨∣┃\-‐–—−－﹣])0[*×✕✖⨯⨉x倍])|(?:(?<=[ \[\(|｜丨∣┃\-‐–—−－﹣])[*×✕✖⨯⨉x]0(?=[ \)\]]|倍|$))|^(?!.*(?:客户端|软件)).*下载|低倍|免费|(?<![A-Za-z])free(?![A-Za-z])/i,
+      /^(?!.*(?:剩|期)).*(?:(?<!\d)0(\.[0-5]|[*×✕✖⨯⨉x倍]))|(?:[*×✕✖⨯⨉x]0)|^(?!.*(?:客户端|软件)).*下载|低倍|免费|(?<![A-Za-z])free(?![A-Za-z])/i,
     icon: `${iconBaseUrl}Available.svg`,
   },
   {
     name: highRateRegionName,
     regex:
-      /(?<=[ \[\(|｜丨∣┃\-‐–—−－﹣])((?:[*×✕✖⨯⨉x]\s*(?:[2-9]\d*|[1-9]\d+)(?:\.\d+)?)|(?:(?<![\d.])(?:[2-9]\d*|[1-9]\d+)(?:\.\d+)?\s*(?:倍|[*×✕✖⨯⨉x])))/i,
+      /(?:[*×✕✖⨯⨉x](?:[2-9]\d*|[1-9]\d+)(?:\.\d+)?)|(?:(?<![\d.])(?:[2-9]\d*|[1-9]\d+)(?:\.\d+)?(?:倍|[*×✕✖⨯⨉x]))/i,
     icon: `${iconBaseUrl}Airport.svg`,
   },
 ];
@@ -408,15 +408,15 @@ const serviceConfigs = [
     baseOption: selectBaseOption,
     reject: true,
     providers: {
-      adblockmihomolite: {
+      'category-ads': {
         ...ruleProviderCommonDomain,
-        url: 'https://fastly.jsdelivr.net/gh/217heidai/adblockfilters@main/rules/adblockmihomolite.mrs',
-        path: './ruleset/adblockmihomolite.mrs',
-        'path-in-bundle': 'geo/geosite/category-ads-all.mrs',
+        url: `${ruleSetBaseUrl}geosite/category-ads.mrs`,
+        path: './ruleset/category-ads.mrs',
+        'path-in-bundle': 'geo/geosite/category-ads.mrs',
       },
     },
     icon: `${iconBaseUrl}AdBlock.svg`,
-    rules: ['RULE-SET,adblockmihomolite,AdBlock'],
+    rules: ['RULE-SET,category-ads,AdBlock'],
   },
 ];
 

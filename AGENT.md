@@ -22,10 +22,10 @@
 | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 原始位图参考                     | `Icons/png/<Name>.png`                                                                                                                                                                                                                                     |
 | 统一化矢量（对外提供的就是这套） | `Icons/svg/<Name>.svg`                                                                                                                                                                                                                                     |
-| 命名                             | PascalCase、无下划线/连字符；png 与 svg **同名一一对应**（当前 37 对）                                                                                                                                                                                     |
-| 引用格式                         | `https://fastly.jsdelivr.net/gh/AIsouler/MyClash@main/Icons/svg/<Name>.svg`；**JS 脚本里前缀已提为 `iconBaseUrl`**，写成 `` `${iconBaseUrl}<Name>.svg` ``；YAML 不支持变量，仍写全量                                                                       |
-| 引用位置                         | `Script/mihomoScript.js`（42）、`Script/Script.js`（24）、`Config/mihomoConfig.yaml`（34）、`Config/mihomoConfigLite.yaml`（18）（共 118 处）                                                                                                              |
-| 规则集引用                       | 脚本里已提为 `const ruleSetBaseUrl`（`…/gh/appshubcc/bett-rules@meta/geo/`），写成 `` `${ruleSetBaseUrl}geosite/<name>.mrs` ``；`path-in-bundle` 是包内本地路径，与之无关；少数第三方规则集（Emby / emos / adblock / cn-additional）仓库不同，仍写全量 URL |
+| 命名                             | PascalCase、无下划线/连字符；png 与 svg **同名一一对应**（当前 38 对）                                                                                                                                                                                     |
+| 引用格式                         | `https://cdn.jsdmirror.com/gh/AIsouler/MyClash@main/Icons/svg/<Name>.svg`；**JS 脚本里前缀已提为 `iconBaseUrl`**，写成 `` `${iconBaseUrl}<Name>.svg` ``；YAML 不支持变量，仍写全量                                                                       |
+| 引用位置                         | `Script/mihomoScript.js`（43）、`Script/Script.js`（24）、`Config/mihomoConfig.yaml`（35）、`Config/mihomoConfigLite.yaml`（18）（共 120 处）                                                                                                              |
+| 规则集引用                       | 脚本里已提为 `const ruleSetBaseUrl`（`…/gh/appshubcc/bett-rules@meta/geo/`），写成 `` `${ruleSetBaseUrl}geosite/<name>.mrs` ``；`path-in-bundle` 是包内本地路径，与之无关；少数第三方规则集（Emby / emos / cn-additional）仓库不同，仍写全量 URL |
 | 回归测试                         | `node Test/run-tests.js`（改过脚本必跑，当前 192 项；含 ES2020 语法检查与 QuickJS 实跑 `main()`）                                                                                                                                                          |
 
 ---
@@ -52,9 +52,9 @@
   4. **国旗（America / Japan / HongKong / China / Taiwan / Singapore）一律不动**；字形、宽扁、细线稿类同样不动；
   5. 缩放只改最外层 `transform`（`translate(512+k(tx−512), 512+k(ty−512)) scale(k·s)`，绕画布中心 ⇒ 居中不变），几何 / 渐变 / 结构一字不动；白名单**分两档**：**尖角方形 −10%（`k=0.90`）**、**四角弧形的方形 −5%（`k=0.95`）**，当前名单与判定依据见 §5.17。
 - ⚠️ **唯一允许的「非等比」例外：`OpenAI.svg` 用 `scale(sx sy)`**（2026-09-28 用户要求"左右两边紧贴画布边缘"）：官方矢量内容盒 256.03×259.53 ⇒ 长宽比 0.9865，等比归一后左右各留 6.75px，故把 x 单独放大 **1.336%** 补满 1024×1024 —— `translate(11.0206 10.8145) scale(3.9139042 3.8623049)`。**其余 36 个图标一律等比，别把这个例外"修回"等比**（起因、取舍与验收见 §5.18）。Flutter 侧已核：`vector_graphics_compiler` 的 `_parseSvgScale` 支持 1~2 个参数。
-- `transform` 只有 `tx/ty` 全为 0 且 `s == 1` 时才省略（如 EHentai）。
+- `transform` 只有 `tx/ty` 全为 0 且 `s == 1` 时才省略（**整份连外层 `<g>` 一起省**，直接 `<defs>` + 图形元素；当前唯一实例是 `Patreon.svg` —— 圆正好铺满画布）。⚠️ 原文举的 `EHentai` 有误：它 `scale(1.6461000)`，必须带 `<g>`。
 - **除这个最外层 `<g>` 外，不要再靠 `transform` 搬图形**：要整组平移/缩放，就**直接改坐标数值**（坐标改完若内容包围盒变了，再按上面两式重算 `tx/ty/s`）。理由：内容坐标才是这套文件的"真身"，多一层 `transform` 等于同一几何存在两套坐标 —— §5 的按坐标审计、§4.2 的回归基线全部对不上，还容易被当成 §1.3 的「无操作 `transform`」顺手删掉。2026-09-26 起 `America`（§5.11）/ `Singapore`（§5.12）的内部图案位移已写回坐标。
-- 文件风格：LF 换行、2 空格缩进、一个标签一行、属性不折行；不加 `<?xml?>` 声明。
+- 文件风格：**CRLF 换行**（全仓库 38 个文件实测都是 CRLF；写入时用 `open(..., newline="")` 保留，理由见 §5.17）、**4 空格缩进**为主（`EHentai` / `HongKong` / `Japan` / `Proxy` / `RoundRobin` / `Server` / `WorldMap` 等历史文件是 2 空格或混用，别顺手重排）、一个标签一行、属性不折行；不加 `<?xml?>` 声明。⚠️ 本节原写"LF 换行、2 空格缩进"与仓库实际不符，已按实测更正（2026-10-04）。
 - 渐变坐标**不用改**：`userSpaceOnUse` 的坐标随外层 `scale` 一起缩放；`objectBoundingBox` 本来就与坐标无关。
 - **默认带渐变**：每条上色 `path` 的 `fill` 用 `linearGradient`（做法与验收见 §1.4），不要写成纯色。
 
@@ -102,6 +102,8 @@ const box = [vbX + x0 * upp, vbY + y0 * upp, (x1 - x0 + 1) * upp, (y1 - y0 + 1) 
 2. 渐变范围取**内容盒的 y 起止**，不是 `0`~`1024`（EHentai `y 0~480`、Fcm `y 0~1640`、PayPal `y 3~48`）；`x1=x2=0` 即纯竖直；
 3. 方向统一 **亮端在上（`offset="0"`）、暗端在下（`offset="100%"`）**，与 YouTube 同向；
 4. 每条 path 都写**显式** `fill="url(#id)"`（理由见 §2.1，别靠继承）；id 用 `<图标名小写><序号>`（`fcm1` / `paypal3`）。
+
+⚠️ **容器已经是纯黑（或已到该色亮度下限）时**：`该色 × 0.88` 是空操作，对容器写渐变等于白写 —— **这种图标按纯色交付，别自作主张把渐变挪到白色字形上**。`Patreon.svg`（纯黑圆底 + 纯白 P）就是定稿实例：2026-10-04 先做过"白字形 `#FFFFFF → #E0E0E0`"的折中版，被用户当轮否掉，最终**整份不加渐变、无 `<defs>`**（见 §4.1）。白字形在有色容器上仍按既有惯例保持纯白（Telegram / Spotify / Line / Steam / Bitcoin）。
 
 **分层图标的关键**：所有层用**同一对 `y1/y2`**（同一个父 `<g>` 下），这样各层"变暗比例"完全一致 → 层次与配色关系照旧，只多一层上亮下暗的 shading。**绝不能**把多层合并成一条整体渐变（Fcm 第一次就是这么错的，花色层次全丢）。
 
@@ -170,7 +172,7 @@ const box = [vbX + x0 * upp, vbY + y0 * upp, (x1 - x0 + 1) * upp, (y1 - y0 + 1) 
 2. 元素都在白名单内，且没有 `<style>` / `<filter>` / `fe*` / `<mask>` / `xlink:` / `class=`；
 3. 所有 `url(#id)` 与 `href="#id"` 都能解析到定义（悬空引用 = 画面直接缺块）；
 4. `clipPath` 的子元素只能是形状或 `use`。
-5. **`transform` 只准出现在最外层那个规范化 `<g>` 上**（正则：全文 `transform="` 只能命中 1 次，且形状必须是 `translate(tx ty) scale(s)`）。`Icons/svg/` 现有例外只有 `Google.svg`（描摹遗留的 `<g clip-path+matrix>`）和 `HongKong.svg`（15 个 `<use rotate>`，§5.5 的 5 重对称复用）—— 新文件一律不要走这条路（§1.1）。
+5. **`transform` 只准出现在最外层那个规范化 `<g>` 上**（正则：全文 `transform="` 命中 **0 或 1** 次；命中 1 次时形状必须是 `translate(tx ty) scale(s)`；命中 0 次即 §1.1 的「`s==1` 且 `tx=ty=0`」情形，当前仅 `Patreon.svg`）。`Icons/svg/` 现有例外只有 `Google.svg`（描摹遗留的 `<g clip-path+matrix>`）和 `HongKong.svg`（15 个 `<use rotate>`，§5.5 的 5 重对称复用）—— 新文件一律不要走这条路（§1.1）。
 
 ### 2.1 渲染器健壮性：别依赖 `fill` 继承（真机踩坑）
 
@@ -295,6 +297,8 @@ vtracer.exe -i in.png -o out.svg --clustering color-cluster --hierarchical cutou
 | `OpenAI.svg` | 换稿后发现**左右两边不紧贴画布边缘**：官方矢量内容盒 **256.03 × 259.53（宽/高 = 0.9865，天生高 1.35%）**，按 §1.1 等比归一（最长边 1024）后必然左右各留 6.75px；实测可见盒 1010.50 × 1024（左右余量 6.75/6.75 相等，上下顶满） | 2026-09-28 用户要求"左右两边紧贴画布边缘"：把 x 单独放大 **1.336%**，`transform` 写成非等比两参数 —— `translate(11.0206 10.8145) scale(3.9139042 3.8623049)`（方法、为何不能等比放大/旋转、代价见 §5.18）。实测可见盒 **1024.000 × 1024.000、四边余量全 0**；`transform` 计数 1、无禁用元素、`url(#gradient_0)` 可解析、CRLF/15 行版式不变。⚠️ 这是全仓库**唯一**的非等比 `transform`，**勿"修回"等比**（其余 36 个仍按 §1.1 等比） |
 
 | `Microsoft / EHentai`（−10%）、`PikPak / Static`（−5%） | **"看着有大有小"**：外层归一化早已统一（最长边 1024），但方形/块状图案（Microsoft 四色方块墨迹占画布 90.5%、PikPak 圆角方形徽章 95.8%）与字形类（WorldMap 25.9%）同框时明显"大一圈" | 2026-09-28 用户定稿：**只按白名单缩放，分两档**——**尖角方形**（Microsoft、EHentai）`k=0.90`；**四角弧形的方形**（PikPak、Static）`k=0.95`（用户："static/pikpak 这类四角是弧形的方形图案改为缩小 5%"）。判定用"角窗墨迹占比"：≈100% = 尖角、20~45% = 弧形角（PikPak 41%/r≈6.2%、Static 19%/r≈8%）。`Server.svg` 按用户指示**移出白名单并回退**（`k=1.0`）。只改外层 `transform` 一行（`translate(512+k(tx−512), 512+k(ty−512)) scale(k·s)`）。验收：忽略行尾后 **32 个文件与基线逐字节相同**、只有 Microsoft/EHentai/PikPak/Static 4 个差 `transform` token；实测 `d_墨` 比值 **0.899 / 0.900 / 0.950 / 0.950 / 1.000(Server)**；37 个文件行尾统一 CRLF。⚠️ 同日先按形状指标自动判定选出 16 个（误含 6 个圆形徽章，满圆的"方形度"同为 1.000）→ 用户纠正为白名单制；**勿再自动判定** |
+
+| `Patreon.svg` | 用户提供的源图：`<circle style="fill:#000">` 黑底徽章 + `<path style="fill:#fff">` 白色 P；坐标 3 位小数、无 `width/height`、无渐变 | 2026-10-04 统一化新增（配套全量版 `Patreon` 分流组）：内容盒 = 圆本身（`cx=512 cy=512 r=512`）**正好铺满画布** ⇒ `s=1 / tx=ty=0`，按 §1.1 末条**整份省略外层 `<g>`**（38 个图标里的首例）；`style="fill:…"` 内联为 `fill` 属性；路径由相对 `M/c/z` 转**绝对坐标 + 2 位小数**（7 段三次贝塞尔、`d` 302 字符、最短控制柄 65 单位 ⇒ 无 §1.3 的短段量化折角风险）；4 空格缩进 + 全 CRLF。**渐变**：用户 2026-10-04 明确要求**不加渐变** ⇒ 纯黑底 `fill="#000000"` + 纯白字形 `fill="#FFFFFF"`（`#fff`→`#FFFFFF` 按 §2.1 写全），整份**没有 `<defs>`**。曾先按 §1.4 默认做过"容器纯黑 + 白字形 `#FFFFFF → #E0E0E0`"的版本（因为 `#000000 × 0.88` 仍是纯黑，对容器写渐变是空操作），用户当轮否掉 ⇒ **黑底这类图标直接按纯色交付，别自作主张给白字形补渐变**（§1.4 尾注同步改了）。验收：可见盒 **0,0,1024,1024**（最长边 1024、四边余量 0；alpha 阈值 128 / 3 两档一致）；§2 清单全过（`transform` 计数 **0**、无 `<defs>`/style/filter/mask/xlink/class、fill 只写在 circle 与 path 上、4 行全 CRLF）；与源图 1024px 逐像素 **mean 0.0007 / max 16 / px>8 = 60**（全部来自坐标 2 位小数量化，**alpha 通道逐像素零差异**）；`node Test/run-tests.js` **192 项全绿** |
 
 ### 4.3 不经修改的已知项（属设计或源图固有，别再当瑕疵改）
 
@@ -804,10 +808,10 @@ Singapore 实测：`C1 (249.4028, 330.6168) R1 132.9217`（rms 0.72）、`C2 (34
 - 引用格式（**CDN 前缀固定不变**）：
 
 ```txt
-https://fastly.jsdelivr.net/gh/AIsouler/MyClash@main/Icons/svg/<Name>.svg
+https://cdn.jsdmirror.com/gh/AIsouler/MyClash@main/Icons/svg/<Name>.svg
 ```
 
-- 改完必须审计：4 个文件里所有 `fastly.jsdelivr.net/gh/AIsouler/MyClash@main/Icons/(svg|png)/...` 的目标文件都存在，且没有残留的第三方图标 CDN（Koolson / MiToverG422 / lige47）。
+- 改完必须审计：4 个文件里所有 `cdn.jsdmirror.com/gh/AIsouler/MyClash@main/Icons/(svg|png)/...` 的目标文件都存在，且没有残留的第三方图标 CDN（Koolson / MiToverG422 / lige47）。
 - jsDelivr 走 `@main` 分支，**commit + push 之后**链接才生效。
 - ⚠️ Windows 下仅大小写不同的改名（`fcm.png` → `Fcm.png`）git 可能不记录 → 必要时 `git rm --cached <旧名>` 再 `git add <新名>`，保证 index 里的文件名与 URL 逐字符一致。
 
@@ -842,8 +846,8 @@ Start-Process -FilePath "<python.exe>" -ArgumentList '-m','http.server','8765','
 
 ---
 
-## 9. 当前图标清单（37）
+## 9. 当前图标清单（38）
 
-`AdBlock, Airport, America, Apple, Auto, Available, Bitcoin, Bypass, OpenAI, China, EHentai, Emby, Fcm, Global, Google, HongKong, Japan, Line, Meta, Microsoft, Netflix, PayPal, PikPak, Proxy, RoundRobin, Server, Singapore, Spotify, Stack, Static, Steam, Taiwan, Telegram, TikTok, Twitter, WorldMap, YouTube`
+`AdBlock, Airport, America, Apple, Auto, Available, Bitcoin, Bypass, OpenAI, China, EHentai, Emby, Fcm, Global, Google, HongKong, Japan, Line, Meta, Microsoft, Netflix, PayPal, Patreon, PikPak, Proxy, RoundRobin, Server, Singapore, Spotify, Stack, Static, Steam, Taiwan, Telegram, TikTok, Twitter, WorldMap, YouTube`
 
 每个文件里都已烘焙好 `translate(tx ty) scale(s)`，需要复现规则时直接读该文件的 `transform` 即可。
