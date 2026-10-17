@@ -19,6 +19,7 @@ const EXPORT_SUFFIX = `
   stripDnsSuffix,
   simplifyDomainPolicy,
   getMatchedRegions,
+  toMatchableName,
   normalizeProxyName,
   fixDialerProxy,
   isIpAddress,

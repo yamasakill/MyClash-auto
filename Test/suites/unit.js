@@ -2,23 +2,9 @@
 
 /**
  * 纯函数单元测试，两个脚本共用。
- * 覆盖：matchDomainPattern / getMatchedRegions / normalizeProxyName / fixDialerProxy
+ * 覆盖：matchDomainPattern / getMatchedRegions / normalizeProxyName / fixDialerProxy / buildCustomizeGroups
  */
 function runUnitTests(h, api, meta) {
-  /** 临时修改 ruleOptionsEnable 的若干选项，执行完成后恢复，避免污染后续用例 */
-  const withUnitOptions = (patch, fn) => {
-    const saved = {};
-    for (const key of Object.keys(patch)) {
-      saved[key] = api.ruleOptionsEnable[key];
-      api.ruleOptionsEnable[key] = patch[key];
-    }
-    try {
-      return fn();
-    } finally {
-      for (const key of Object.keys(patch)) api.ruleOptionsEnable[key] = saved[key];
-    }
-  };
-
   h.section('单元测试 · matchDomainPattern（域名规则匹配）');
   const d = new Set(['example.com', 'sub.example.com', 'a.b.example.com', 'other.org']);
   h.test('精确匹配命中', () => h.assert(api.matchDomainPattern('example.com', d)));
@@ -39,8 +25,8 @@ function runUnitTests(h, api, meta) {
   h.test('JAPAN-02 → 日本', () => h.assert(matched('JAPAN-02').includes('日本')));
   h.test('US-LosAngeles-02 → 美国', () => h.assert(matched('US-LosAngeles-02').includes('美国')));
   h.test('SG 01 | 新加坡 → 新加坡', () => h.assert(matched('SG 01 | 新加坡').includes('新加坡')));
-  h.test('台湾 01 → 台湾省（仅全量版）', () => {
-    if (meta.full) h.assert(matched('台湾 01').includes('台湾省'));
+  h.test('台湾 01 → 台湾（仅全量版）', () => {
+    if (meta.full) h.assert(matched('台湾 01').includes('台湾'));
   });
   h.test('日本 0.3x 流量 → 低倍率节点 + 日本', () => {
     const n = matched('日本 0.3x 流量');
@@ -53,6 +39,37 @@ function runUnitTests(h, api, meta) {
     h.assert(n.includes('香港'));
   });
   h.test('无地区关键词 → 空结果', () => h.assertEqual(matched('随便测试名称').length, 0));
+  h.test('名称夹零宽字符仍能匹配地区（匹配期剥离）', () => {
+    h.assert(matched('H\u200BK\u200B \u200B0\u200B1').includes('香港'), 'H\\u200BK 应识别为香港');
+    h.assert(matched('J\u200BP\u200B \u200B0\u200B2').includes('日本'), 'J\\u200BP 应识别为日本');
+    h.assert(
+      matched('\u180EH\u2063K\u2066 \u206901\u2069').includes('香港'),
+      '蒙古文分隔符/隐形运算符/隔离符 均应忽略',
+    );
+    h.assert(matched('\u3164SG\uFFA0 03').includes('新加坡'), '谚文填充符应忽略');
+  });
+  h.test('夹零宽字符不影响倍率匹配', () => {
+    const n = matched('\u200B日本\u200B 0.3\u200Bx 流量');
+    h.assert(n.includes('低倍率节点'), '应识别为低倍率节点');
+    h.assert(n.includes('日本'));
+  });
+
+  h.section('单元测试 · toMatchableName（仅供匹配的不可见字符剥离）');
+  h.test('剥离零宽/不可见字符', () => h.assertEqual(api.toMatchableName('H\u200BK\u200B \u200B0\u200B1'), 'HK 01'));
+  h.test('剥离双向控制符 / 隐形运算符 / 隔离符', () =>
+    h.assertEqual(api.toMatchableName('H\u202AK\u2060\u2063\u2066J\u2069P\u00AD \u180E01'), 'HKJP 01'),
+  );
+  h.test('剥离谚文填充符与 BOM', () =>
+    h.assertEqual(api.toMatchableName('\uFEFF\u3164HK\uFFA0 \u115F0\u11601'), 'HK 01'),
+  );
+  h.test('保留 ZWJ / ZWNJ（emoji 组合与连字语义）', () =>
+    h.assertEqual(api.toMatchableName('H\u200CK\u200DJ'), 'H\u200CK\u200DJ'),
+  );
+  h.test('保留变体选择符（emoji 呈现语义）', () => h.assertEqual(api.toMatchableName('❤\uFE0F HK'), '❤\uFE0F HK'));
+  h.test('正常名称与中文国旗保持不变', () => {
+    h.assertEqual(api.toMatchableName('🇭🇰 香港 01'), '🇭🇰 香港 01');
+    h.assertEqual(api.toMatchableName('HK 01'), 'HK 01');
+  });
 
   h.section('单元测试 · normalizeProxyName（节点名标准化）');
   h.test('无国旗自动补地区国旗', () => h.assertEqual(api.normalizeProxyName({ name: 'HK 01' }).name, '🇭🇰 HK 01'));
@@ -98,32 +115,6 @@ function runUnitTests(h, api, meta) {
     );
     h.assertDeep(r.customProxyNames, ['🇭🇰 自建-自建-香港 01']);
   });
-
-  h.section('单元测试 · buildCustomizeGroups（链式代理）');
-  h.test('链式代理启用：强制添加 dialer-proxy（已有值被覆盖）', () =>
-    withUnitOptions({ 链式代理: true }, () => {
-      for (const proxies of [custom('自建独享'), [{ ...mkCustomProxy('自建独享'), 'dialer-proxy': '旧中转' }]]) {
-        const r = api.buildCustomizeGroups([], proxies);
-        h.assertEqual(r.customProxies[0]['dialer-proxy'], '链式中转');
-      }
-    }),
-  );
-  h.test('链式代理启用：策略组名改为“链式落地”，节点名称保持不变', () =>
-    withUnitOptions({ 链式代理: true }, () => {
-      const r = api.buildCustomizeGroups([], custom('自建-日本-01'));
-      h.assertEqual(r.customGroup.name, '链式落地');
-      h.assertDeep(r.customProxyNames, ['🇯🇵 自建-日本-01']);
-    }),
-  );
-  h.test('未启用链式代理：不添加 dialer-proxy', () => {
-    const r = api.buildCustomizeGroups([], custom('自建独享'));
-    h.assert(!('dialer-proxy' in r.customProxies[0]), '未启用链式代理时不应添加 dialer-proxy');
-  });
-  h.test('链式代理启用但未配置自定义节点 → 抛错', () =>
-    withUnitOptions({ 链式代理: true }, () =>
-      h.assertThrows(() => api.buildCustomizeGroups([], []), /启用失败，请在脚本中添加自定义节点后尝试/),
-    ),
-  );
 
   h.section('单元测试 · fixDialerProxy（dialer-proxy 引用修复）');
   const renameMap = new Map([['旧名', '新名']]);

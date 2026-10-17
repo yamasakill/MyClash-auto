@@ -66,7 +66,7 @@ function typicalSubscription() {
         cipher: 'aes-256-gcm',
         password: 'x',
       },
-      // --- 台湾省（全量版地区）---
+      // --- 台湾（全量版地区）---
       { name: '🇹🇼 台湾 01', type: 'vmess', server: 'tw1.example.com', port: 443, uuid: 'z', alterId: 0 },
       // --- 低倍率节点 ---
       { name: '日本 0.3x 流量', type: 'ss', server: '1.2.3.7', port: 443, cipher: 'aes-256-gcm', password: 'x' },
@@ -182,10 +182,58 @@ function hostsMappedSubscription() {
   };
 }
 
+/** 逐字符插入零宽空格 U+200B，模拟部分机场对节点名的处理 */
+function withInvisibleChars(name) {
+  return name.split('').join('\u200B');
+}
+
+/**
+ * 节点名含零宽/不可见字符的场景。
+ * 期望：匹配期剥离不可见字符后地区识别、信息节点过滤都应正常，
+ * 但节点名本身**不得被改写**（保留原样，含不可见字符）。
+ */
+function invisibleCharsSubscription() {
+  const zw = withInvisibleChars;
+  return {
+    proxies: [
+      { name: zw('HK 01'), type: 'ss', server: 'hk.example.com', port: 443, cipher: 'aes-256-gcm', password: 'x' },
+      // 谚文填充符（另一族不可见字符）
+      {
+        name: '\u3164SG\uFFA0 03',
+        type: 'ss',
+        server: 'sg.example.com',
+        port: 443,
+        cipher: 'aes-256-gcm',
+        password: 'x',
+      },
+      // 信息节点：夹了零宽字符也应被排除
+      {
+        name: zw('官网公告'),
+        type: 'ss',
+        server: 'notice.example.com',
+        port: 443,
+        cipher: 'aes-256-gcm',
+        password: 'x',
+      },
+      {
+        name: zw('US 04'),
+        type: 'ss',
+        server: 'us.example.com',
+        port: 443,
+        cipher: 'aes-256-gcm',
+        password: 'x',
+        'dialer-proxy': zw('HK 01'),
+      },
+    ],
+  };
+}
+
 module.exports = {
   typicalSubscription,
   minimalSubscription,
   emptySubscription,
   allFilteredSubscription,
   hostsMappedSubscription,
+  invisibleCharsSubscription,
+  withInvisibleChars,
 };

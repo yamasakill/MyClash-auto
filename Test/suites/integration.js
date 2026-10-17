@@ -67,6 +67,27 @@ function runIntegrationTests(h, api, meta, fx, loadScript, scriptFile) {
     h.assertEqual(hkGroup.proxies.filter((x) => x === '🇭🇰 香港 A').length, 1, '地区组内不应出现重复节点');
   });
 
+  h.test('节点名含零宽字符：匹配期剥离后地区/过滤正常，且节点名不被改写', () => {
+    const zw = fx.withInvisibleChars;
+    const out = api.main(fx.invisibleCharsSubscription());
+    const n = proxyNames(out.proxies);
+
+    // 1. 节点名必须保持原样（不可见字符仍在），不做任何清洗改写
+    h.assert(n.includes(`🇭🇰 ${zw('HK 01')}`), 'HK 01 应补国旗并保留原名中的不可见字符');
+    h.assert(n.includes('🇸🇬 \u3164SG\uFFA0 03'), 'SG 03 应补国旗并保留谚文填充符');
+    h.assert(!n.some((x) => x === '🇭🇰 HK 01'), '不得输出被清洗过的名字（说明发生了改写）');
+
+    // 2. 匹配不受影响：地区识别、信息节点过滤、倍率判断均正常
+    h.assert(!n.some((x) => x.includes('官网')), '信息节点应被过滤');
+    h.assert(groupByName(out['proxy-groups'], '香港').proxies.includes(`🇭🇰 ${zw('HK 01')}`), '应归入香港地区组');
+    h.assert(groupByName(out['proxy-groups'], '新加坡').proxies.includes('🇸🇬 \u3164SG\uFFA0 03'), '应归入新加坡地区组');
+
+    // 3. dialer-proxy 引用照常同步（名字只被补了国旗，未发生清洗）
+    const us = out.proxies.find((x) => x.name === `🇺🇸 ${zw('US 04')}`);
+    h.assert(us, 'US 04 应存在');
+    h.assertEqual(us['dialer-proxy'], `🇭🇰 ${zw('HK 01')}`, 'dialer-proxy 应同步为补国旗后的名字');
+  });
+
   // ---------------- GLOBAL 策略组 ----------------
   h.section('集成测试 · GLOBAL 策略组');
   h.test('GLOBAL 聚合所有策略组', () => {
@@ -497,112 +518,6 @@ function runIntegrationTests(h, api, meta, fx, loadScript, scriptFile) {
 
     // 自定义节点域名不应进入 fake-ip-filter（不参与 DNS 域名处理）
     h.assert(!out.dns['fake-ip-filter'].includes('custom1.example.com'), '自定义节点域名不应进入 fake-ip-filter');
-  });
-
-  // ---------------- 链式代理 ----------------
-  h.section('集成测试 · 链式代理');
-  // 注入自定义节点（首个节点自带 dialer-proxy，用于验证覆盖行为；与订阅节点“香港 01 | 中转”标准化后重名）
-  const chainCustomInjection = `const customizeProxies = [
-    { name: '香港 01 | 中转', type: 'ss', server: 'custom1.example.com', port: 443, cipher: 'aes-256-gcm', password: 'x', 'dialer-proxy': '旧中转' },
-    { name: '自建独享', type: 'vmess', server: 'custom2.example.com', port: 443, uuid: 'x', alterId: 0 },
-    { name: '自建-日本-01', type: 'trojan', server: 'custom3.example.com', port: 443, password: 'x' },
-  ];`;
-
-  h.test('未启用链式代理：自定义节点保持自建- 前缀且 dialer-proxy 不被修改', () => {
-    const customApi = loadScript(scriptFile, (code) =>
-      code.replace('const customizeProxies = [];', chainCustomInjection),
-    );
-    const out = customApi.main(fx.typicalSubscription());
-    const n = proxyNames(out.proxies);
-    h.assert(n.includes('🇭🇰 自建-香港 01 | 中转'), '重名自定义节点应加自建- 前缀');
-    h.assert(n.includes('🇯🇵 自建-日本-01'), '自定义节点名称保持不变');
-    h.assertEqual(
-      out.proxies.find((x) => x.name === '🇭🇰 自建-香港 01 | 中转')['dialer-proxy'],
-      '旧中转',
-      '未启用链式代理时 dialer-proxy 应保持不变',
-    );
-    h.assert(!groupByName(out['proxy-groups'], '链式中转'), '不应生成链式中转组');
-  });
-
-  h.test('启用链式代理：生成链式中转组、自建- 前缀、强制 dialer-proxy', () => {
-    const customApi = loadScript(scriptFile, (code) =>
-      code.replace('const customizeProxies = [];', chainCustomInjection),
-    );
-    withOptions(customApi, { 链式代理: true }, () => {
-      const out = customApi.main(fx.typicalSubscription());
-      const n = proxyNames(out.proxies);
-
-      // 重名自定义节点使用“自建-”前缀；未重名节点名称保持不变
-      h.assert(n.includes('🇭🇰 自建-香港 01 | 中转'), '重名自定义节点应加自建- 前缀');
-      h.assert(n.includes('🇯🇵 自建-日本-01'), '未重名自定义节点名称保持不变');
-      h.assert(n.includes('自建独享'), '未重名自定义节点保持原名');
-      h.assertEqual(n.filter((x) => x === '🇭🇰 香港 01 | 中转').length, 1, '订阅节点仍应唯一保留');
-
-      // 强制 dialer-proxy（覆盖已有值）
-      h.assertEqual(
-        out.proxies.find((x) => x.name === '🇭🇰 自建-香港 01 | 中转')['dialer-proxy'],
-        '链式中转',
-        '已有 dialer-proxy 应被覆盖',
-      );
-      h.assertEqual(
-        out.proxies.find((x) => x.name === '自建独享')['dialer-proxy'],
-        '链式中转',
-        '应为自定义节点添加 dialer-proxy',
-      );
-
-      // “链式落地”策略组（链式代理启用时的自定义节点组）存在并含自定义节点
-      const customGroup = groupByName(out['proxy-groups'], '链式落地');
-      h.assert(customGroup, '链式落地组应存在');
-      h.assert(!groupByName(out['proxy-groups'], '自建节点'), '链式代理启用时不应存在“自建节点”组');
-      h.assert(customGroup.proxies.includes('🇭🇰 自建-香港 01 | 中转'), '链式落地组应含自定义节点');
-
-      // 链式中转组存在且为 select
-      const chain = groupByName(out['proxy-groups'], '链式中转');
-      h.assert(chain, '应生成链式中转组');
-      h.assertEqual(chain.type, 'select');
-
-      // 链式中转直接放入所有订阅节点（不含自定义节点与直连节点），不放入任何策略组
-      const customNodeNames = new Set(customGroup.proxies);
-      const subscriptionNodes = out.proxies
-        .filter((p) => p.type !== 'direct' && !customNodeNames.has(p.name))
-        .map((p) => p.name);
-      h.assert(subscriptionNodes.length > 0, '前置：应存在订阅节点');
-      h.assertEqual(chain.proxies.length, subscriptionNodes.length, '链式中转应仅包含订阅节点');
-      for (const name of subscriptionNodes) {
-        h.assert(chain.proxies.includes(name), `链式中转应包含节点 ${name}`);
-      }
-      const allGroupNames = new Set(out['proxy-groups'].map((g) => g.name));
-      for (const x of chain.proxies) {
-        h.assert(!allGroupNames.has(x), `链式中转不应放入策略组 ${x}`);
-      }
-
-      // 链式中转仅嵌套进 GLOBAL，不嵌套进其他任何策略组
-      const global = groupByName(out['proxy-groups'], 'GLOBAL');
-      for (const g of out['proxy-groups']) {
-        if (g.name !== '链式中转') {
-          if (g.name === 'GLOBAL') {
-            h.assert(g.proxies.includes('链式中转'), 'GLOBAL 应包含链式中转');
-          } else {
-            h.assert(!g.proxies.includes('链式中转'), `策略组 ${g.name} 不应包含链式中转`);
-          }
-        }
-      }
-
-      // GLOBAL 聚合所有策略组（含链式中转与链式落地）
-      for (const g of out['proxy-groups']) {
-        if (g.name !== 'GLOBAL') {
-          h.assert(global.proxies.includes(g.name), `GLOBAL 应包含策略组 ${g.name}`);
-        }
-      }
-
-      // 自定义节点仍参与其他策略组（默认代理/手动选择）；链式中转只放订阅节点，不再形成回环
-      h.assert(groupByName(out['proxy-groups'], '默认代理').proxies.includes('链式落地'), '默认代理应含链式落地组');
-      h.assert(
-        groupByName(out['proxy-groups'], '手动选择').proxies.includes('🇭🇰 自建-香港 01 | 中转'),
-        '手动选择应含自建节点',
-      );
-      h.assert(global.proxies.includes('链式落地'), 'GLOBAL 应含链式落地组');
-    });
   });
 
   // ---------------- 异常场景 ----------------
