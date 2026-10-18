@@ -78,6 +78,9 @@ const prefixRules = [
   "DOMAIN-SUFFIX,rch01e-alive-hls.akamaized.net,日本",
   "DOMAIN-SUFFIX,av.mk.io,日本",
   // <<< CUSTOM PREFIX RULES <<<
+  // 规则集下载域名，避免出现鸡蛋问题
+  'DOMAIN,cdn.jsdmirror.com,直连',
+
   // 私有网络直连
   'RULE-SET,private,直连',
 
