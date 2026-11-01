@@ -38,7 +38,7 @@ if (lineEndIndex === -1) {
 const markerStart = '  // >>> CUSTOM PREFIX RULES >>>';
 const markerEnd = '  // <<< CUSTOM PREFIX RULES <<<';
 
-const block = [markerStart, ...rules.map((rule) => `  ${JSON.stringify(rule)},`), markerEnd, ''].join(lineBreak);
+const block = [markerStart, ...rules.map((rule) => `  '${rule.replace(/'/g, "\\'")}',`), markerEnd, ''].join(lineBreak);
 
 const output = upstream.slice(0, lineEndIndex + 1) + block + upstream.slice(lineEndIndex + 1);
 
