@@ -305,8 +305,8 @@ function runIntegrationTests(h, api, meta, fx, loadScript, scriptFile) {
       const groups = out['proxy-groups'];
       h.assertDeep(
         groups.map((g) => g.name),
-        ['GLOBAL', '默认代理', '直连'],
-        '极简模式策略组应仅保留 GLOBAL、默认代理和直连',
+        ['GLOBAL', '默认代理', '自动选择', '直连'],
+        '极简模式策略组应仅保留 GLOBAL、默认代理、自动选择和直连',
       );
       h.assert(!out.dns['fake-ip-filter'].includes('rule-set:googlefcm'), '不应注入 FCM fake-IP 规则');
       h.assert(!out.rules.some((rule) => /,(Google|AI|Telegram|Steam|AdBlock)$/.test(rule)), '不应生成分流规则');
@@ -403,6 +403,38 @@ function runIntegrationTests(h, api, meta, fx, loadScript, scriptFile) {
     withOptions(api, { 过滤非地区节点: false }, () => {
       const out = api.main(fx.minimalSubscription());
       h.assert(proxyNames(out.proxies).includes('官网公告'), '信息节点应被保留');
+    }),
+  );
+
+  // ---------------- 家宽节点 ----------------
+  h.section('集成测试 · 家宽节点');
+  h.test('家宽节点归类：生成家宽节点组，地区家宽节点仍归地区组', () => {
+    const out = api.main(fx.homeBroadbandSubscription());
+    const g = groupByName(out['proxy-groups'], '家宽节点');
+    h.assert(g, '应生成家宽节点组');
+    h.assertEqual(g.type, 'select', '家宽节点组应为 select 类型');
+    h.assert(g.proxies.includes('🇭🇰 香港 家宽 01'), '地区家宽节点应入家宽组');
+    h.assert(g.proxies.includes('家宽专线 03'), '无地区关键词的家宽节点应入家宽组');
+    h.assert(groupByName(out['proxy-groups'], '香港').proxies.includes('🇭🇰 香港 家宽 01'), '地区家宽节点仍归地区组');
+    h.assert(groupByName(out['proxy-groups'], '新加坡').proxies.includes('🇸🇬 新加坡 06'), '非家宽节点正常归地区组');
+    h.assert(
+      groupByName(out['proxy-groups'], '其他节点').proxies.includes('家宽专线 03'),
+      '无地区关键词的家宽节点仍入其他节点组（与倍率组行为一致）',
+    );
+    h.assert(groupByName(out['proxy-groups'], '默认代理').proxies.includes('家宽节点'), '默认代理应含家宽节点组');
+  });
+  h.test('生成家宽节点组=false → 不生成家宽节点组，节点仍按地区/其他归类', () =>
+    withOptions(api, { 生成家宽节点组: false }, () => {
+      const out = api.main(fx.homeBroadbandSubscription());
+      h.assert(!groupByName(out['proxy-groups'], '家宽节点'), '不应生成家宽节点组');
+      h.assert(!groupByName(out['proxy-groups'], '家宽节点-自动选择'), '不应生成家宽自动选择组');
+      h.assert(groupByName(out['proxy-groups'], '香港').proxies.includes('🇭🇰 香港 家宽 01'), '地区家宽节点仍归地区组');
+      h.assert(
+        groupByName(out['proxy-groups'], '其他节点').proxies.includes('家宽专线 03'),
+        '无地区关键词的家宽节点仍入其他节点组',
+      );
+      h.assert(!groupByName(out['proxy-groups'], '默认代理').proxies.includes('家宽节点'), '默认代理不应含家宽节点组');
+      h.assert(proxyNames(out.proxies).includes('🇭🇰 香港 家宽 01'), '家宽节点本身仍应保留');
     }),
   );
 
