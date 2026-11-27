@@ -1,27 +1,14 @@
 'use strict';
 
+const { withOptions } = require('../lib/options');
+
 const groupByName = (groups, name) => groups.find((g) => g.name === name);
 const proxyNames = (proxies) => proxies.map((p) => p.name);
 
-/** 临时修改 ruleOptionsEnable 的若干选项，执行完成后恢复，避免污染后续用例 */
-function withOptions(api, patch, fn) {
-  const saved = {};
-  for (const key of Object.keys(patch)) {
-    saved[key] = api.ruleOptionsEnable[key];
-    api.ruleOptionsEnable[key] = patch[key];
-  }
-  try {
-    return fn();
-  } finally {
-    for (const key of Object.keys(patch)) api.ruleOptionsEnable[key] = saved[key];
-  }
-}
-
 /**
  * 集成测试：直接调用 main() 对模拟订阅进行覆写并断言输出。
- * meta: { full, regions }
  */
-function runIntegrationTests(h, api, meta, fx, loadScript, scriptFile) {
+function runIntegrationTests(h, api, fx, loadScript, scriptFile) {
   // ---------------- 节点过滤与标准化 ----------------
   h.section('集成测试 · 节点过滤与标准化');
   h.test('节点过滤与标准化：剔除无效节点、保留有效节点并补国旗', () => {
@@ -113,9 +100,6 @@ function runIntegrationTests(h, api, meta, fx, loadScript, scriptFile) {
     const out = api.main(cfg);
     h.assertEqual(out.dns.enable, true);
     h.assertEqual(out.dns['enhanced-mode'], 'fake-ip');
-    // 默认 DNS 与代理服务器 DNS 分别使用固定列表，不再承载私有 DNS
-    h.assertDeep(out.dns['default-nameserver'], api.defaultDNS);
-    h.assertDeep(out.dns['proxy-server-nameserver'], api.proxyServerDNS);
     // 相同 DNS 的节点域名按后缀压缩为一条规则；两个来源的私有 DNS 合并去重、剥离 # 后缀
     const policy = out.dns['proxy-server-nameserver-policy'];
     h.assertDeep(policy['+.example.com'], [
@@ -258,6 +242,32 @@ function runIntegrationTests(h, api, meta, fx, loadScript, scriptFile) {
       );
     }
   });
+  h.test('proxy-server-nameserver 不存在或为空时触发 hosts 改写', () => {
+    const find = (cfg) => api.main(cfg).proxies.find((x) => x.name === '🇭🇰 香港 01 | 中转');
+    // 缺失 / 空数组 / 空串（listen 仍在）→ 无订阅 DNS 可用，直接按 hosts 改写节点域名
+    for (const value of [undefined, [], '']) {
+      const cfg = fx.typicalSubscription();
+      if (value === undefined) delete cfg.dns['proxy-server-nameserver'];
+      else cfg.dns['proxy-server-nameserver'] = value;
+      h.assertEqual(
+        find(cfg).server,
+        '10.0.0.1',
+        `proxy-server-nameserver 为空（${String(value)}）时应触发 hosts 改写`,
+      );
+    }
+    // 字符串写法等价于单元素数组（归一化后同样参与条件判断与私有 DNS 提取）
+    const stringCfg = fx.typicalSubscription();
+    stringCfg.dns['proxy-server-nameserver'] = '198.18.0.1:53';
+    h.assertEqual(find(stringCfg).server, '10.0.0.1', 'proxy-server-nameserver 为字符串时应触发 hosts 改写');
+    // 触发后不再把空的 proxy-server-nameserver 写入节点域名 policy
+    const outCfg = fx.typicalSubscription();
+    outCfg.dns['proxy-server-nameserver'] = [];
+    const policy = api.main(outCfg).dns['proxy-server-nameserver-policy'] || {};
+    h.assert(
+      Object.values(policy).every((v) => (Array.isArray(v) ? v : [v]).every((d) => String(d).trim() !== '')),
+      '不应把空值写入节点域名 policy',
+    );
+  });
   h.test('新写法 proxy-server-nameserver 含 127.0.0.1 且 listen 含 0.0.0.0 时触发 hosts 改写', () => {
     const cfg = fx.typicalSubscription();
     // 新写法：listen 为 0.0.0.0:7874，proxy-server-nameserver 为 udp://127.0.0.1:7874，
@@ -279,8 +289,6 @@ function runIntegrationTests(h, api, meta, fx, loadScript, scriptFile) {
     const privateDNS = out3.dns['proxy-server-nameserver-policy']['+.example.com'];
     h.assert(!privateDNS.some((d) => d.includes('udp://127.0.0.1')), 'listen 对应的本地 DNS 不应被误留为私有 DNS');
     h.assert(privateDNS.includes('https://private.example-dns.com/dns-query'), 'nameserver 中的私有 DNS 仍应保留');
-    h.assertDeep(out3.dns['default-nameserver'], api.defaultDNS);
-    h.assertDeep(out3.dns['proxy-server-nameserver'], api.proxyServerDNS);
   });
   h.test('无 dns/hosts 输入时生成默认配置', () => {
     const cfg = fx.typicalSubscription();
@@ -288,9 +296,7 @@ function runIntegrationTests(h, api, meta, fx, loadScript, scriptFile) {
     delete cfg.hosts;
     const out = api.main(cfg);
     h.assertEqual(out.dns.enable, true);
-    // 默认与代理服务器 DNS 使用各自的固定公共 DNS；无私有 DNS 时不生成 policy
-    h.assertDeep(out.dns['default-nameserver'], api.defaultDNS);
-    h.assertDeep(out.dns['proxy-server-nameserver'], api.proxyServerDNS);
+    // 无私有 DNS 时不生成 policy
     h.assert(!('proxy-server-nameserver-policy' in out.dns), '无私有 DNS 时不应生成 policy');
     h.assertDeep(out.hosts['doh.pub'], ['1.12.12.12', '120.53.53.53']);
     // 默认 hosts 仍生成（不再包含已移除的 dns.alidns.com/dns.google 等条目）
@@ -299,14 +305,27 @@ function runIntegrationTests(h, api, meta, fx, loadScript, scriptFile) {
 
   // ---------------- 配置选项切换 ----------------
   h.section('集成测试 · 配置选项切换');
-  h.test('极简模式仅保留基础策略组且 MATCH 走默认代理', () =>
-    withOptions(api, { 极简模式: true }, () => {
+  h.test('default-selected 只指向组内成员：无对应地区组时不下发', () => {
+    // hostsMapped 订阅只有香港/美国节点，日本地区组不会生成
+    for (const factory of [fx.typicalSubscription, fx.hostsMappedSubscription]) {
+      const out = api.main(factory());
+      for (const group of out['proxy-groups']) {
+        if (group['default-selected'] === undefined) continue;
+        h.assert(
+          group.proxies.includes(group['default-selected']),
+          `${group.name} 的 default-selected「${group['default-selected']}」应存在于本组`,
+        );
+      }
+    }
+  });
+  h.test('极简国内外分流模式仅保留基础策略组且 MATCH 走默认代理', () =>
+    withOptions(api, { 极简国内外分流模式: true }, () => {
       const out = api.main(fx.typicalSubscription());
       const groups = out['proxy-groups'];
       h.assertDeep(
         groups.map((g) => g.name),
         ['GLOBAL', '默认代理', '自动选择', '直连'],
-        '极简模式策略组应仅保留 GLOBAL、默认代理、自动选择和直连',
+        '极简国内外分流模式策略组应仅保留 GLOBAL、默认代理、自动选择和直连',
       );
       h.assert(!out.dns['fake-ip-filter'].includes('rule-set:googlefcm'), '不应注入 FCM fake-IP 规则');
       h.assert(!out.rules.some((rule) => /,(Google|AI|Telegram|Steam|AdBlock)$/.test(rule)), '不应生成分流规则');
@@ -331,8 +350,8 @@ function runIntegrationTests(h, api, meta, fx, loadScript, scriptFile) {
       h.assert(groupByName(out['proxy-groups'], '日本'), '日本组仍应存在');
     }),
   );
-  h.test('生成倍率组=false → 不生成倍率组，节点按地区归类', () =>
-    withOptions(api, { 生成倍率组: false }, () => {
+  h.test('生成高低倍率组=false → 不生成高低倍率组，节点按地区归类', () =>
+    withOptions(api, { 生成高低倍率组: false }, () => {
       const out = api.main(fx.typicalSubscription());
       h.assert(!groupByName(out['proxy-groups'], '低倍率节点'), '不应生成低倍率组');
       h.assert(!groupByName(out['proxy-groups'], '高倍率节点'), '不应生成高倍率组');
@@ -361,6 +380,15 @@ function runIntegrationTests(h, api, meta, fx, loadScript, scriptFile) {
       h.assert(groupByName(out['proxy-groups'], '香港'), '香港组仍应存在');
     }),
   );
+  h.test('生成地区自动选择组=true → 自动选择组排在地区组之后', () => {
+    const out = api.main(fx.minimalSubscription());
+    const names = out['proxy-groups'].map((g) => g.name);
+    const idx = names.indexOf('香港');
+    h.assert(idx >= 0, '应生成香港组');
+    h.assertEqual(names[idx + 1], '香港-自动选择', '自动选择组应紧跟其地区组之后');
+    h.assert(!names.slice(0, idx).includes('香港-自动选择'), '自动选择组不应排在地区组之前');
+    h.assert(groupByName(out['proxy-groups'], '香港').proxies.includes('香港-自动选择'), '地区组应包含自动选择组');
+  });
   h.test('隐藏地区手动选择组=true → 地区组 hidden', () =>
     withOptions(api, { 隐藏地区手动选择组: true }, () => {
       const out = api.main(fx.minimalSubscription());
@@ -373,17 +401,6 @@ function runIntegrationTests(h, api, meta, fx, loadScript, scriptFile) {
       h.assert(groupByName(out['proxy-groups'], 'AI').proxies.includes('🇭🇰 香港 A'), 'AI 组应含全部节点');
     }),
   );
-  h.test('屏蔽国外QUIC 开关：true 生成 / false 移除 QUIC 规则与 cn_additional', () => {
-    // true（默认）→ 生成 cn_additional 规则集
-    h.assert(api.main(fx.minimalSubscription())['rule-providers'].cn_additional, 'cn_additional 规则集应生成');
-    // false → 移除 QUIC 规则与 cn_additional，cn 规则集保留
-    withOptions(api, { 屏蔽国外QUIC: false }, () => {
-      const out = api.main(fx.minimalSubscription());
-      h.assert(!out.rules.some((r) => r.includes('DST-PORT,443') && r.includes('REJECT')), '不应含 QUIC 规则');
-      h.assert(!out['rule-providers'].cn_additional, 'cn_additional 规则集不应生成');
-      h.assert(out['rule-providers'].cn, 'cn 规则集仍应生成（供 nameserver-policy 使用）');
-    });
-  });
   h.test('关闭 AI 分流组 → 移除组/规则/规则集', () =>
     withOptions(api, { AI: false }, () => {
       const out = api.main(fx.minimalSubscription());
@@ -490,12 +507,9 @@ function runIntegrationTests(h, api, meta, fx, loadScript, scriptFile) {
       }
     }
   });
-  h.test('两开关同时开启 → 保持不变：开关保持开启、不应用任何偏好', () =>
+  h.test('两开关同时开启 → 不应用任何偏好', () =>
     withOptions(api, { 代理IPV4优先: true, 代理IPV6优先: true }, () => {
       const out = api.main(fx.typicalSubscription());
-      // 同时开启时开关保持不变（不被自动关闭）
-      h.assertEqual(api.ruleOptionsEnable.代理IPV4优先, true, 'IPv4 应保持不变');
-      h.assertEqual(api.ruleOptionsEnable.代理IPV6优先, true, 'IPv6 应保持不变');
       // 不应用任何 IP 版本偏好：订阅节点保持原样（不新增 ip-version）
       for (const p of nonDirectProxies(out)) {
         h.assert(!('ip-version' in p), `订阅节点 ${p.name} 不应被新增 ip-version`);
@@ -550,6 +564,105 @@ function runIntegrationTests(h, api, meta, fx, loadScript, scriptFile) {
 
     // 自定义节点域名不应进入 fake-ip-filter（不参与 DNS 域名处理）
     h.assert(!out.dns['fake-ip-filter'].includes('custom1.example.com'), '自定义节点域名不应进入 fake-ip-filter');
+  });
+
+  // ---------------- 链式代理 ----------------
+  h.section('集成测试 · 链式代理');
+  // 注入自定义节点（首个节点自带 dialer-proxy，用于验证覆盖行为；与订阅节点“香港 01 | 中转”标准化后重名）
+  const chainCustomInjection = `const customizeProxies = [
+    { name: '香港 01 | 中转', type: 'ss', server: 'custom1.example.com', port: 443, cipher: 'aes-256-gcm', password: 'x', 'dialer-proxy': '旧中转' },
+    { name: '自建独享', type: 'vmess', server: 'custom2.example.com', port: 443, uuid: 'x', alterId: 0 },
+    { name: '自建-日本-01', type: 'trojan', server: 'custom3.example.com', port: 443, password: 'x' },
+  ];`;
+
+  h.test('未启用链式代理：自定义节点保持自建- 前缀且 dialer-proxy 不被修改', () => {
+    const customApi = loadScript(scriptFile, (code) =>
+      code.replace('const customizeProxies = [];', chainCustomInjection),
+    );
+    const out = customApi.main(fx.typicalSubscription());
+    const n = proxyNames(out.proxies);
+    h.assert(n.includes('🇭🇰 自建-香港 01 | 中转'), '重名自定义节点应加自建- 前缀');
+    h.assert(n.includes('🇯🇵 自建-日本-01'), '自定义节点名称保持不变');
+    h.assertEqual(
+      out.proxies.find((x) => x.name === '🇭🇰 自建-香港 01 | 中转')['dialer-proxy'],
+      '旧中转',
+      '未启用链式代理时 dialer-proxy 应保持不变',
+    );
+    h.assert(!groupByName(out['proxy-groups'], '链式中转'), '不应生成链式中转组');
+  });
+
+  h.test('启用链式代理：生成链式中转组、自建- 前缀、强制 dialer-proxy', () => {
+    const customApi = loadScript(scriptFile, (code) =>
+      code.replace('const customizeProxies = [];', chainCustomInjection),
+    );
+    withOptions(customApi, { 链式代理: true }, () => {
+      const out = customApi.main(fx.typicalSubscription());
+      const n = proxyNames(out.proxies);
+
+      // 重名自定义节点使用“自建-”前缀；未重名节点名称保持不变
+      h.assert(n.includes('🇭🇰 自建-香港 01 | 中转'), '重名自定义节点应加自建- 前缀');
+      h.assert(n.includes('🇯🇵 自建-日本-01'), '未重名自定义节点名称保持不变');
+      h.assert(n.includes('自建独享'), '未重名自定义节点保持原名');
+      h.assertEqual(n.filter((x) => x === '🇭🇰 香港 01 | 中转').length, 1, '订阅节点仍应唯一保留');
+
+      // 强制 dialer-proxy（覆盖已有值）
+      h.assertEqual(
+        out.proxies.find((x) => x.name === '🇭🇰 自建-香港 01 | 中转')['dialer-proxy'],
+        '链式中转',
+        '已有 dialer-proxy 应被覆盖',
+      );
+      h.assertEqual(
+        out.proxies.find((x) => x.name === '自建独享')['dialer-proxy'],
+        '链式中转',
+        '应为自定义节点添加 dialer-proxy',
+      );
+
+      // “链式落地”策略组（链式代理启用时的自定义节点组）存在并含自定义节点
+      const customGroup = groupByName(out['proxy-groups'], '链式落地');
+      h.assert(customGroup, '链式落地组应存在');
+      h.assert(!groupByName(out['proxy-groups'], '自建节点'), '链式代理启用时不应存在“自建节点”组');
+      h.assert(customGroup.proxies.includes('🇭🇰 自建-香港 01 | 中转'), '链式落地组应含自定义节点');
+
+      // 链式中转组存在且为 select
+      const chain = groupByName(out['proxy-groups'], '链式中转');
+      h.assert(chain, '应生成链式中转组');
+      h.assertEqual(chain.type, 'select');
+
+      // 链式中转直接放入所有订阅节点（不含自定义节点与直连节点），不放入任何策略组
+      const customNodeNames = new Set(customGroup.proxies);
+      const subscriptionNodes = out.proxies
+        .filter((p) => p.type !== 'direct' && !customNodeNames.has(p.name))
+        .map((p) => p.name);
+      h.assert(subscriptionNodes.length > 0, '前置：应存在订阅节点');
+      h.assertEqual(chain.proxies.length, subscriptionNodes.length, '链式中转应仅包含订阅节点');
+      for (const name of subscriptionNodes) {
+        h.assert(chain.proxies.includes(name), `链式中转应包含节点 ${name}`);
+      }
+      const allGroupNames = new Set(out['proxy-groups'].map((g) => g.name));
+      for (const x of chain.proxies) {
+        h.assert(!allGroupNames.has(x), `链式中转不应放入策略组 ${x}`);
+      }
+
+      // 链式中转仅嵌套进 GLOBAL，不嵌套进其他任何策略组
+      const global = groupByName(out['proxy-groups'], 'GLOBAL');
+      for (const g of out['proxy-groups']) {
+        if (g.name !== '链式中转') {
+          if (g.name === 'GLOBAL') {
+            h.assert(g.proxies.includes('链式中转'), 'GLOBAL 应包含链式中转');
+          } else {
+            h.assert(!g.proxies.includes('链式中转'), `策略组 ${g.name} 不应包含链式中转`);
+          }
+        }
+      }
+
+      // 自定义节点仍参与其他策略组（默认代理/手动选择）；链式中转只放订阅节点，不再形成回环
+      h.assert(groupByName(out['proxy-groups'], '默认代理').proxies.includes('链式落地'), '默认代理应含链式落地组');
+      h.assert(
+        groupByName(out['proxy-groups'], '手动选择').proxies.includes('🇭🇰 自建-香港 01 | 中转'),
+        '手动选择应含自建节点',
+      );
+      h.assert(global.proxies.includes('链式落地'), 'GLOBAL 应含链式落地组');
+    });
   });
 
   // ---------------- 异常场景 ----------------

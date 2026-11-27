@@ -2,7 +2,7 @@
 
 /**
  * 待测试/验证的脚本及差异元信息（单一来源）。
- * run-tests.js（Node 测试）、es2020-check.js、quickjs-check.js 共用，
+ * run-tests.js（Node 测试）、es2026-check.js、quickjs-check.js 共用，
  * 避免脚本列表在多处重复维护导致不同步。
  */
 const SCRIPTS = [
@@ -10,7 +10,6 @@ const SCRIPTS = [
     file: 'Script/Script.js',
     label: '精简版 Script.js',
     meta: {
-      full: false,
       regions: ['香港', '日本', '美国', '新加坡'],
     },
   },
@@ -18,7 +17,6 @@ const SCRIPTS = [
     file: 'Script/mihomoScript.js',
     label: '全量版 mihomoScript.js',
     meta: {
-      full: true,
       regions: ['香港', '日本', '美国', '新加坡', '台湾'],
     },
   },

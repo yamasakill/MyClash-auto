@@ -1,6 +1,6 @@
 # MyClash
 
-基于 [Mihomo](https://github.com/MetaCubeX/mihomo/tree/Alpha) 的**覆写脚本与配置文件**，仅适用于 mihomo 内核的代理客户端
+基于 [Mihomo](https://github.com/MetaCubeX/mihomo/tree/Alpha) 的**覆写脚本与配置文件**，同时适配 mihomo 与 [Concord](https://github.com/chen08209/concord)（[FlClash](https://github.com/chen08209/FlClash) 新内核）两套内核
 
 > [!IMPORTANT]
 >
@@ -16,7 +16,7 @@
 - 🪶 **轻量规则方案**：采用 `rule-set` 按需加载规则，减少配置体积与内存占用
 - 🛡️ **无 DNS 泄露**：DNS 配置与路由规则配套设计，解决 DNS 泄露问题
 - 🔧 **私有 DNS 自动处理**：自动处理机场私有 DNS 与节点域名 hosts 映射，无需手动修改
-- 🪜 **高级代理功能**：支持自定义节点、IPv4 / IPv6 优先及国外 QUIC 屏蔽
+- 🪜 **高级代理功能**：支持自定义节点、链式代理、IPv4 / IPv6 优先及国外 QUIC 屏蔽
 - 📱 **适配 [Bettbox](https://github.com/appshubcc/Bettbox) 图形化配置**：可直接在图形界面中开关策略组和功能选项，无需手动修改代码
 
 ## 版本选择
@@ -25,6 +25,17 @@
 
 - **全量版**：包含完整的分流策略组，适合需要精细分流的用户
 - **精简版**：仅保留常用分流策略组，配置更加简洁
+
+---
+
+## 内核适配
+
+| 内核 | 适用客户端 | 对应文件 |
+| --- | --- | --- |
+| mihomo | 绝大多数 mihomo 内核客户端 | `mihomoScript.js` / `Script.js`、`mihomoConfig.yaml` / `mihomoConfigLite.yaml` |
+| Concord | FlClash 新内核 | `concordScript.js` / `concordScriptLite.js`、`concordConfig.yaml` / `concordConfigLite.yaml` |
+
+FlClash 新版已切换为 Concord 内核，Concord 不读取的参数已从 concord 版本中移除。导入步骤、可配置项以及与 mihomo 的行为差异，见 **[FlClash（Concord 内核）使用说明](/Docs/FlClashConcord.md)**。
 
 ---
 
@@ -48,9 +59,9 @@
 | -------- | --------------------------------------------------------------------------------------------------------------------- |
 | 策略组   | 内置多个分流策略组，每个都可单独开关，根据节点自动生成地区策略组，可选择地区自动选择、手动选择及高 / 低倍率组、家宽组 |
 | 节点处理 | 过滤高倍率、低倍率及非地区节点，可统一设置 IPv4 / IPv6 优先                                                           |
-| 分流     | 可将全部节点加入分流策略组，也可启用极简模式                                                                          |
-| 网络     | 可选屏蔽国外 QUIC 流量                                                                                                |
-| 高级     | 支持自定义节点                                                                                                        |
+| 分流     | 可将全部节点加入分流策略组，也可启用极简国内外分流模式                                                                |
+| 网络     | 可选屏蔽代理 QUIC 流量                                                                                                |
+| 高级     | 支持自定义节点与链式代理                                                                                              |
 | 兼容     | 自动处理节点 hosts 映射及机场私有 DNS                                                                                 |
 
 ### 使用方法（脚本）
@@ -132,4 +143,3 @@ https://raw.githubusercontent.com/AIsouler/MyClash/main/Config/mihomoConfigLite.
 - [YiXuanZX/rules](https://github.com/YiXuanZX/rules)
 - [appshubcc/bett-rules](https://github.com/appshubcc/bett-rules)
 - [Koolson/Qure](https://github.com/Koolson/Qure)
-- [jsdmirror/JSDMirror](https://github.com/jsdmirror/JSDMirror)

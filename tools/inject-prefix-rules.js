@@ -12,12 +12,20 @@ if (!upstreamPath || !outputPath || !rulesPath) {
 }
 
 // 在 GitHub Actions 里同步时，先把上游 main 合并进来，让 fork 始终包含上游提交，
-// compare / PR 才不会因为落后上游而冲突。失败时只打印日志，不影响规则注入。
+// compare / PR 才不会因为落后上游而冲突。
+//
+// 注意：这里以前把异常吞掉只打一行日志，结果合并从来没成功过、job 却一直绿灯。
+// 现在合并失败会让整个同步任务失败（规则照常注入并提交，但 CI 变红），
+// 免得 fork 悄悄落后上游好几个月。
+let mergeFailed = false;
+let mergePending = false;
+
 if (process.env.GITHUB_ACTIONS === 'true') {
   try {
-    mergeUpstream(process.cwd());
+    mergePending = mergeUpstream(process.cwd());
   } catch (error) {
-    console.error('[sync] skipped upstream merge: ' + error.message);
+    mergeFailed = true;
+    console.error('::error::[sync] upstream merge failed: ' + error.message);
   }
 }
 
@@ -57,3 +65,10 @@ const output = upstream.slice(0, lineEndIndex + 1) + block + upstream.slice(line
 fs.writeFileSync(outputPath, output, 'utf8');
 
 console.log(`Inserted ${rules.length} custom rules.`);
+if (mergePending) {
+  console.log('[sync] upstream main merged, commit will include the merge.');
+}
+
+if (mergeFailed) {
+  process.exitCode = 1;
+}
